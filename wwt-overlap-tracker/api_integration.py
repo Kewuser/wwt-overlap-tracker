@@ -32,8 +32,8 @@ import pandas as pd
 # ─── CREDENTIALS ─────────────────────────────────────────────────────────────
 # Day 1: paste your real values here
 # Day 5: delete the hardcoded values and rely on environment variables only
-SMARTSHEET_TOKEN = os.environ.get("SMARTSHEET_TOKEN", "f6JMVRqE3jzVnjO1Mv5siTNi3xgSzO5oJzX1Z")
-SMARTSHEET_SHEET_ID = os.environ.get("SMARTSHEET_SHEET_ID", "854380674082692")
+SMARTSHEET_TOKEN = os.environ.get("SMARTSHEET_TOKEN", "")
+SMARTSHEET_SHEET_ID = os.environ.get("SMARTSHEET_SHEET_ID", "")
 # ─────────────────────────────────────────────────────────────────────────────
 
 

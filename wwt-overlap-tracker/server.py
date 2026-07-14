@@ -46,7 +46,7 @@ from groq import Groq
 # Groq key: get it from https://console.groq.com -> API Keys
 # Day 2: paste your key below
 # Day 4: delete the hardcoded key and rely on environment variable only
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
  
 # Smartsheet credentials are already set in api_integration.py
 # -----------------------------------------------------------------------------
