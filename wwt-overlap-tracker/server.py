@@ -1,5 +1,5 @@
 """
-BSA Overlap Tracker — Flask Web Server
+BSA Overlap Tracker - Flask Web Server
 ========================================
 This is the brain of the dashboard. It:
   1. Pulls live project data from Smartsheet via api_integration.py
@@ -7,54 +7,71 @@ This is the brain of the dashboard. It:
   3. Merges in manually added projects from manual_projects.json
   4. Serves everything to the dashboard via API endpoints
   5. Powers the Groq AI Update Assistant
+  6. Auto-refreshes data at 8am, 12pm, and 5pm daily
  
 HOW TO RUN:
   python server.py
   Then open http://localhost:5000 in your browser.
  
 HOW TO DEPLOY (Day 4):
-  Push to GitHub → connect to Render → add environment variables in Render dashboard.
+  Push to GitHub, connect to Render, add environment variables in Render dashboard.
  
 ENDPOINTS:
-  GET  /                      → serves dashboard.html
-  GET  /api/projects          → all projects (Smartsheet + manual), overlap scores, summary
-  GET  /api/manual            → manual projects only
-  POST /api/manual            → add a new manual project
-  PUT  /api/manual/<ref_id>   → edit an existing manual project
-  DELETE /api/manual/<ref_id> → delete a manual project
-  POST /api/analyze           → Groq AI suggests an update for a project
+  GET  /                       serves dashboard.html
+  GET  /api/projects           all projects (Smartsheet + manual), overlap scores, summary
+  GET  /api/refresh            force an immediate Smartsheet re-pull (called by Refresh button)
+  GET  /api/manual             manual projects only
+  POST /api/manual             add a new manual project
+  PUT  /api/manual/<ref_id>    edit an existing manual project
+  DELETE /api/manual/<ref_id>  delete a manual project
+  GET  /api/links              all enhancement-to-project links
+  POST /api/links              link an enhancement to a large project
+  DELETE /api/links/<ref_id>   remove a link
+  POST /api/analyze            Groq AI suggests an update for a project
  
 CREDENTIALS:
   Day 2: paste your Groq API key below (GROQ_API_KEY)
-  Day 4: move all keys to Render environment variables and GitHub Secrets
+  Day 4: delete the hardcoded key and rely on environment variable only
 """
  
 import os
 import json
-import uuid
+import threading
+import time
 from datetime import datetime
 from flask import Flask, jsonify, request, send_from_directory
 from groq import Groq
  
-# ─── CREDENTIALS ─────────────────────────────────────────────────────────────
-# Groq key: get it from https://console.groq.com → API Keys
+# --- CREDENTIALS -------------------------------------------------------------
+# Groq key: get it from https://console.groq.com -> API Keys
 # Day 2: paste your key below
 # Day 4: delete the hardcoded key and rely on environment variable only
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "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")
  
-# Smartsheet credentials (already set in api_integration.py — no need to repeat here)
-# ─────────────────────────────────────────────────────────────────────────────
+# Smartsheet credentials are already set in api_integration.py
+# -----------------------------------------------------------------------------
  
-# ─── CONFIG ──────────────────────────────────────────────────────────────────
+# --- CONFIG ------------------------------------------------------------------
 MANUAL_PROJECTS_FILE = "manual_projects.json"
-DASHBOARD_FILE = "dashboard.html"  # will be created on Day 3
-# ─────────────────────────────────────────────────────────────────────────────
+LINKS_FILE = "project_links.json"   # { enhancement_ref_id: large_project_ref_id }
+DASHBOARD_FILE = "dashboard.html"
+ 
+# Auto-refresh times (24-hour format). Data re-pulled from Smartsheet at these hours.
+REFRESH_HOURS = {8, 12, 17}  # 8am, 12pm, 5pm
+# -----------------------------------------------------------------------------
  
 app = Flask(__name__)
 groq_client = Groq(api_key=GROQ_API_KEY)
  
+# --- IN-MEMORY CACHE ---------------------------------------------------------
+# Stores the last successful data pull so the dashboard never waits on Smartsheet.
+# If Smartsheet is unreachable, the server serves the last known data instead of crashing.
+_cache = {"data": None}
+_cache_lock = threading.Lock()
+# -----------------------------------------------------------------------------
  
-# ─── MANUAL PROJECTS HELPERS ─────────────────────────────────────────────────
+ 
+# --- MANUAL PROJECTS HELPERS -------------------------------------------------
  
 def load_manual_projects():
     """Load manually added projects from JSON file."""
@@ -79,7 +96,22 @@ def next_manual_id(projects):
     return f"M-{counter:03d}"
  
  
-# ─── DATA PIPELINE ───────────────────────────────────────────────────────────
+# --- LINKS HELPERS -----------------------------------------------------------
+ 
+def load_links():
+    """Load enhancement-to-project links from JSON file."""
+    if not os.path.exists(LINKS_FILE):
+        return {}
+    with open(LINKS_FILE, "r") as f:
+        return json.load(f)
+ 
+ 
+def save_links(links):
+    with open(LINKS_FILE, "w") as f:
+        json.dump(links, f, indent=2)
+ 
+ 
+# --- DATA PIPELINE -----------------------------------------------------------
  
 def build_full_dataset():
     """
@@ -100,9 +132,7 @@ def build_full_dataset():
     # 3. Merge manual projects
     manual = load_manual_projects()
     if manual:
-        # Run overlap detection on manual projects too (simple version)
         for mp in manual:
-            # Check if manual project's BSA is overloaded
             bsa = mp.get("bsa_owner", "")
             flags = []
             score = 0
@@ -136,7 +166,52 @@ def build_full_dataset():
     return output
  
  
-# ─── ROUTES ──────────────────────────────────────────────────────────────────
+def refresh_cache():
+    """
+    Pull fresh data from Smartsheet and update the in-memory cache.
+    Called by the background scheduler and the /api/refresh endpoint.
+    If the pull fails, the old cached data is preserved.
+    """
+    global _cache
+    print(f"[{datetime.now().strftime('%I:%M %p')}] Refreshing data from Smartsheet...")
+    try:
+        data = build_full_dataset()
+        with _cache_lock:
+            _cache["data"] = data
+        print(f"[{datetime.now().strftime('%I:%M %p')}] Refresh complete. {data['summary']['total_active']} active projects.")
+        return data
+    except Exception as e:
+        print(f"[{datetime.now().strftime('%I:%M %p')}] Refresh failed: {e}. Serving last known data.")
+        return None
+ 
+ 
+def start_scheduler():
+    """
+    Background thread that auto-refreshes data at 8am, 12pm, and 5pm daily.
+    Wakes up every 30 seconds to check the time.
+    """
+    fired_today = set()
+ 
+    def scheduler_loop():
+        nonlocal fired_today
+        while True:
+            now = datetime.now()
+            today = now.date()
+            # Reset the fired set each new day
+            fired_today = {h for h in fired_today if h[0] == today}
+            key = (today, now.hour)
+            if now.hour in REFRESH_HOURS and key not in fired_today:
+                fired_today.add(key)
+                refresh_cache()
+            time.sleep(30)
+ 
+    t = threading.Thread(target=scheduler_loop, daemon=True)
+    t.name = "BSA-AutoRefresh"
+    t.start()
+    print(f"Auto-refresh scheduler started. Will refresh at 8am, 12pm, and 5pm daily.")
+ 
+ 
+# --- ROUTES ------------------------------------------------------------------
  
 @app.route("/")
 def index():
@@ -147,14 +222,37 @@ def index():
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
     """
-    Main data endpoint. Pulls live Smartsheet data, runs overlap detection,
-    merges manual projects, and returns everything as JSON.
+    Main data endpoint. Serves from cache if available.
+    On first load (no cache yet), builds the dataset immediately.
     """
-    try:
-        data = build_full_dataset()
+    with _cache_lock:
+        cached = _cache["data"]
+ 
+    if cached is not None:
+        return jsonify(cached)
+ 
+    # No cache yet - build it now (first request after server start)
+    data = refresh_cache()
+    if data:
         return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Data not available yet. Try again in a moment."}), 503
+ 
+ 
+@app.route("/api/refresh", methods=["GET"])
+def manual_refresh():
+    """
+    Force an immediate Smartsheet re-pull outside the normal schedule.
+    Called by the Refresh Now button on the dashboard.
+    Returns the timestamp of the refresh when done.
+    """
+    data = refresh_cache()
+    if data:
+        return jsonify({
+            "success": True,
+            "last_refreshed": data.get("last_refreshed"),
+            "total_active": data["summary"]["total_active"]
+        })
+    return jsonify({"error": "Refresh failed. Check server logs."}), 500
  
  
 @app.route("/api/manual", methods=["GET"])
@@ -167,7 +265,7 @@ def get_manual_projects():
 def add_manual_project():
     """
     Add a new manual project.
-    Expected JSON body (7 fields confirmed by Ellen):
+    Expected JSON body:
     {
         "project_name": "...",
         "bsa_owner": "...",
@@ -203,15 +301,17 @@ def add_manual_project():
  
     projects.append(new_project)
     save_manual_projects(projects)
+ 
+    # Invalidate cache so next /api/projects call picks up the new project
+    with _cache_lock:
+        _cache["data"] = None
+ 
     return jsonify({"success": True, "project": new_project}), 201
  
  
 @app.route("/api/manual/<ref_id>", methods=["PUT"])
 def edit_manual_project(ref_id):
-    """
-    Edit an existing manual project (triggered by the Edit button on the dashboard).
-    Overwrites all fields with the new values from the form.
-    """
+    """Edit an existing manual project."""
     data = request.get_json()
     if not data:
         return jsonify({"error": "No data provided"}), 400
@@ -230,6 +330,8 @@ def edit_manual_project(ref_id):
                 "updated_at": datetime.now().isoformat(),
             })
             save_manual_projects(projects)
+            with _cache_lock:
+                _cache["data"] = None
             return jsonify({"success": True, "project": projects[i]})
  
     return jsonify({"error": f"Project {ref_id} not found"}), 404
@@ -246,6 +348,40 @@ def delete_manual_project(ref_id):
         return jsonify({"error": f"Project {ref_id} not found"}), 404
  
     save_manual_projects(projects)
+    with _cache_lock:
+        _cache["data"] = None
+    return jsonify({"success": True})
+ 
+ 
+@app.route("/api/links", methods=["GET"])
+def get_links():
+    """Return all enhancement-to-project links as { enhancement_ref_id: large_project_ref_id }."""
+    return jsonify(load_links())
+ 
+ 
+@app.route("/api/links", methods=["POST"])
+def add_link():
+    """
+    Link a Smartsheet enhancement to a large manual project.
+    Body: { "enhancement_ref_id": "SS-123", "large_project_ref_id": "M-001" }
+    """
+    data = request.get_json()
+    if not data or not data.get("enhancement_ref_id") or not data.get("large_project_ref_id"):
+        return jsonify({"error": "enhancement_ref_id and large_project_ref_id required"}), 400
+    links = load_links()
+    links[data["enhancement_ref_id"]] = data["large_project_ref_id"]
+    save_links(links)
+    return jsonify({"success": True})
+ 
+ 
+@app.route("/api/links/<enhancement_ref_id>", methods=["DELETE"])
+def remove_link(enhancement_ref_id):
+    """Remove a link between an enhancement and a large project."""
+    links = load_links()
+    if enhancement_ref_id not in links:
+        return jsonify({"error": "Link not found"}), 404
+    del links[enhancement_ref_id]
+    save_links(links)
     return jsonify({"success": True})
  
  
@@ -253,17 +389,8 @@ def delete_manual_project(ref_id):
 def analyze_project():
     """
     Groq AI Update Assistant.
-    Takes a project (Smartsheet or manual) and a question/context from the BSA,
-    then returns an AI-suggested update. The BSA always decides whether to accept it.
- 
-    Expected JSON body:
-    {
-        "project": { ...project fields... },
-        "question": "What should I update the status to given this situation: ..."
-    }
- 
-    NOTE: This NEVER writes to Smartsheet directly. It only suggests.
-          The BSA copies the suggestion and updates Smartsheet manually.
+    Takes a project and notes from the BSA, returns an AI-suggested update.
+    This NEVER writes to Smartsheet. It only suggests.
     """
     data = request.get_json()
     if not data:
@@ -272,7 +399,6 @@ def analyze_project():
     project = data.get("project", {})
     question = data.get("question", "What update do you suggest for this project?")
  
-    # Build context for the AI
     project_context = f"""
 Project: {project.get('title', 'Unknown')}
 Ref ID: {project.get('ref_id', 'Unknown')}
@@ -297,7 +423,7 @@ BSA's question or context:
 Provide a concise, practical suggestion for how to update or handle this project.
 Focus on status updates, priority adjustments, or coordination recommendations.
 Keep your response under 150 words. Be direct and actionable.
-Remember: you are only suggesting — the BSA makes the final decision."""
+Remember: you are only suggesting - the BSA makes the final decision."""
  
     try:
         response = groq_client.chat.completions.create(
@@ -310,19 +436,24 @@ Remember: you are only suggesting — the BSA makes the final decision."""
         return jsonify({
             "success": True,
             "suggestion": suggestion,
-            "disclaimer": "AI suggestion only — BSA makes the final decision. Do not use this to directly update Smartsheet."
+            "disclaimer": "AI suggestion only - BSA makes the final decision. Do not use this to directly update Smartsheet."
         })
     except Exception as e:
         return jsonify({"error": f"AI error: {str(e)}"}), 500
  
  
-# ─── MAIN ────────────────────────────────────────────────────────────────────
+# --- MAIN --------------------------------------------------------------------
  
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    debug = os.environ.get("FLASK_ENV", "development") == "development"
-    print(f"Starting BSA Overlap Tracker server on http://localhost:{port}")
+ 
+    # Start auto-refresh scheduler (8am, 12pm, 5pm)
+    start_scheduler()
+ 
+    print(f"Starting BSA Overlap Tracker on http://localhost:{port}")
     print(f"Dashboard: http://localhost:{port}/")
     print(f"API:       http://localhost:{port}/api/projects")
-    app.run(host="0.0.0.0", port=port, debug=debug)
+ 
+    # use_reloader=False prevents the scheduler thread from starting twice
+    app.run(host="0.0.0.0", port=port, debug=True, use_reloader=False)
  

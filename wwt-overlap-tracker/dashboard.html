@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>BSA Project Overlap Tracker</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; min-height: 100vh; }
+ 
+    /* HEADER */
+    .header {
+      background: #003087; color: white;
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+    .header-brand { display: flex; align-items: center; gap: 12px; }
+    .header-logo {
+      width: 34px; height: 34px; background: #0066cc;
+      border-radius: 7px; display: flex; align-items: center;
+      justify-content: center; font-weight: 900; font-size: 13px; letter-spacing: -0.5px;
+    }
+    .header-title { font-size: 16px; font-weight: 700; }
+    .header-sub { font-size: 11px; opacity: 0.65; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 14px; }
+    .refresh-time { font-size: 12px; opacity: 0.65; }
+    .btn-refresh {
+      background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25);
+      color: white; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 13px;
+    }
+    .btn-refresh:hover { background: rgba(255,255,255,0.2); }
+ 
+    /* SIDEBAR */
+    .sidebar {
+      width: 210px; background: white; border-right: 1px solid #e2e8f0;
+      position: fixed; top: 56px; bottom: 0; left: 0;
+      overflow-y: auto; z-index: 50;
+    }
+    .nav-section { padding: 18px 0 6px; }
+    .nav-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: #94a3b8; padding: 0 16px 8px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: #475569;
+      border-left: 3px solid transparent; transition: all 0.12s;
+    }
+    .nav-item:hover { background: #f8fafc; color: #003087; }
+    .nav-item.active { background: #eff6ff; color: #003087; border-left-color: #003087; font-weight: 700; }
+    .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+    .nav-badge {
+      margin-left: auto; border-radius: 10px;
+      padding: 1px 7px; font-size: 11px; font-weight: 700;
+    }
+    .nav-badge.red { background: #fee2e2; color: #dc2626; }
+    .nav-badge.blue { background: #dbeafe; color: #1d4ed8; }
+ 
+    /* MAIN AREA */
+    .main { margin-left: 210px; padding: 24px; margin-top: 56px; }
+ 
+    /* STATS STRIP */
+    .stats-strip { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    .stat-card {
+      background: white; border-radius: 10px; border: 1px solid #e2e8f0;
+      padding: 14px 18px; display: flex; align-items: center; gap: 12px;
+      flex: 1; min-width: 130px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    }
+    .stat-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .stat-dot.navy { background: #003087; }
+    .stat-dot.red { background: #dc2626; }
+    .stat-dot.orange { background: #d97706; }
+    .stat-dot.green { background: #16a34a; }
+    .stat-dot.purple { background: #7c3aed; }
+    .stat-value { font-size: 26px; font-weight: 800; color: #1e293b; line-height: 1; }
+    .stat-lbl { font-size: 11px; color: #64748b; margin-top: 2px; }
+ 
+    /* PAGE HEADER */
+    .page-hd { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; }
+    .page-title { font-size: 19px; font-weight: 700; color: #1e293b; }
+    .page-sub { font-size: 12px; color: #64748b; margin-top: 2px; }
+    .count-pill { font-size: 13px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 20px; }
+ 
+    /* FILTER BAR */
+    .filter-bar {
+      display: flex; gap: 10px; margin-bottom: 20px;
+      flex-wrap: wrap; align-items: center;
+      background: white; padding: 10px 14px;
+      border-radius: 8px; border: 1px solid #e2e8f0;
+    }
+    .filter-bar input, .filter-bar select {
+      padding: 7px 10px; border: 1px solid #e2e8f0;
+      border-radius: 6px; font-size: 13px; color: #374151; background: #f8fafc;
+    }
+    .filter-bar input { width: 200px; }
+    .filter-bar input:focus, .filter-bar select:focus {
+      outline: none; border-color: #0066cc; background: white;
+    }
+ 
+    /* CARDS GRID */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 16px;
+    }
+ 
+    /* CARD */
+    .card {
+      background: white; border-radius: 12px;
+      border: 1px solid #e2e8f0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+      transition: box-shadow 0.2s; overflow: hidden;
+    }
+    .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
+ 
+    .card-header { padding: 16px 18px 12px; border-bottom: 1px solid #f1f5f9; }
+    .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
+    .card-title { font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.4; flex: 1; }
+    .badge-row { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
+ 
+    .badge { padding: 3px 9px; border-radius: 12px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+    .b-high { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
+    .b-medium { background: #fffbeb; color: #d97706; border: 1px solid #fde68a; }
+    .b-low { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+    .b-manual { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+    .b-smart { background: #f0f9ff; color: #0369a1; border: 1px solid #bae6fd; }
+    .b-status { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+ 
+    .card-fields { padding: 10px 18px; }
+    .frow { display: flex; align-items: flex-start; padding: 6px 0; border-bottom: 1px solid #f8fafc; gap: 10px; font-size: 13px; }
+    .frow:last-child { border-bottom: none; }
+    .flabel { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; min-width: 78px; padding-top: 1px; }
+    .fval { color: #374151; font-weight: 500; }
+    .fval.strong { color: #1e293b; font-weight: 700; }
+ 
+    .card-flags { padding: 0 18px 10px; }
+    .flag-item {
+      font-size: 12px; color: #b91c1c;
+      background: #fff5f5; border-left: 3px solid #f87171;
+      padding: 5px 10px; margin-bottom: 4px;
+      border-radius: 0 6px 6px 0;
+    }
+ 
+    /* LINK SECTION (on enhancement cards) */
+    .card-link { padding: 10px 18px; border-top: 1px solid #f1f5f9; background: #fafafa; }
+    .link-title { font-size: 11px; font-weight: 700; color: #6d28d9; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; }
+    .link-row { display: flex; gap: 8px; align-items: center; }
+    .link-row select { flex: 1; padding: 6px 9px; border: 1px solid #ddd6fe; border-radius: 6px; font-size: 12px; background: #faf5ff; color: #374151; }
+    .btn-link { padding: 6px 13px; border-radius: 6px; border: none; background: #6d28d9; color: white; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .btn-link:hover { background: #5b21b6; }
+    .linked-to { display: flex; align-items: center; gap: 8px; }
+    .linked-badge { font-size: 12px; color: #6d28d9; background: #f5f3ff; border: 1px solid #ddd6fe; padding: 4px 10px; border-radius: 6px; font-weight: 600; }
+    .btn-unlink { background: none; border: none; cursor: pointer; color: #94a3b8; font-size: 13px; line-height: 1; }
+    .btn-unlink:hover { color: #dc2626; }
+ 
+    /* LINKED ENHANCEMENTS (on large project cards) */
+    .card-linked { padding: 10px 18px; border-top: 1px solid #f1f5f9; background: #f0f9ff; }
+    .linked-title { font-size: 11px; font-weight: 700; color: #0369a1; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; }
+    .linked-item {
+      font-size: 12px; padding: 5px 10px;
+      background: white; border-left: 3px solid #7dd3fc;
+      border-radius: 0 6px 6px 0; margin-bottom: 4px; color: #374151;
+    }
+ 
+    /* CARD FOOTER */
+    .card-footer {
+      padding: 10px 18px; display: flex; gap: 8px;
+      align-items: center; flex-wrap: wrap;
+      border-top: 1px solid #f1f5f9;
+    }
+    .btn-edit { padding: 5px 13px; border-radius: 6px; border: 1px solid #0066cc; background: white; color: #0066cc; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .btn-edit:hover { background: #0066cc; color: white; }
+    .btn-del { padding: 5px 13px; border-radius: 6px; border: 1px solid #e2e8f0; background: white; color: #dc2626; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .btn-del:hover { background: #fef2f2; border-color: #fca5a5; }
+    .btn-ai { padding: 5px 13px; border-radius: 6px; border: 1px solid #7c3aed; background: white; color: #7c3aed; cursor: pointer; font-size: 12px; font-weight: 700; }
+    .btn-ai:hover { background: #7c3aed; color: white; }
+    .source-pill { margin-left: auto; }
+ 
+    /* IMPACT */
+    .impact-card {
+      background: white; border-radius: 12px; border: 1px solid #e2e8f0;
+      padding: 20px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .ic-title { font-size: 15px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .ic-meta { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: #64748b; margin-bottom: 14px; }
+    .ic-group-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 7px; margin-top: 12px; }
+    .ic-group-label.bsa { color: #6d28d9; }
+    .ic-group-label.sys { color: #0369a1; }
+    .ic-group-label.enh { color: #0369a1; }
+    .ic-item { font-size: 13px; padding: 7px 12px; border-radius: 6px; margin-bottom: 4px; }
+    .ic-item.bsa { background: #faf5ff; border-left: 3px solid #a78bfa; }
+    .ic-item.sys { background: #f0f9ff; border-left: 3px solid #7dd3fc; }
+    .ic-item.enh { background: #f0f9ff; border-left: 3px solid #7dd3fc; }
+ 
+    /* HEATMAP */
+    .wl-card {
+      background: white; border-radius: 12px; border: 1px solid #e2e8f0;
+      padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .wl-card-title { font-size: 14px; font-weight: 700; margin-bottom: 16px; }
+    .wl-row { display: flex; align-items: center; gap: 12px; margin-bottom: 9px; }
+    .wl-name { width: 148px; font-size: 13px; font-weight: 500; text-align: right; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .wl-bar-bg { flex: 1; background: #f1f5f9; border-radius: 4px; height: 20px; overflow: hidden; }
+    .wl-fill { height: 100%; background: #0066cc; display: flex; align-items: center; padding-left: 8px; min-width: 26px; transition: width 0.4s; }
+    .wl-fill.over { background: #dc2626; }
+    .wl-n { font-size: 11px; font-weight: 800; color: white; }
+    .over-tag { font-size: 11px; font-weight: 700; color: #dc2626; white-space: nowrap; }
+ 
+    .hm-wrap { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow-x: auto; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .hm-title { font-size: 14px; font-weight: 700; padding: 18px 20px 0; margin-bottom: 12px; }
+    .hm-table { border-collapse: collapse; min-width: 780px; width: 100%; }
+    .hm-table th { background: #003087; color: white; padding: 9px 12px; font-size: 11px; font-weight: 700; text-align: center; }
+    .hm-table th:first-child { text-align: left; min-width: 190px; }
+    .hm-table td { padding: 9px 12px; border: 1px solid #f1f5f9; text-align: center; font-size: 12px; font-weight: 700; }
+    .hm-table td.rname { text-align: left; background: #f8fafc; font-size: 12px; color: #374151; font-weight: 600; }
+    .c0 { background: white; color: #cbd5e1; }
+    .c1 { background: #dbeafe; color: #1d4ed8; }
+    .c2 { background: #fef3c7; color: #d97706; }
+    .c3 { background: #fee2e2; color: #dc2626; }
+ 
+    /* FORM */
+    .form-outer { max-width: 680px; }
+    .form-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .form-card h2 { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .form-sub { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+    .fg { margin-bottom: 18px; }
+    .fg label { display: block; font-size: 13px; font-weight: 600; color: #374151; margin-bottom: 6px; }
+    .fg input, .fg select, .fg textarea {
+      width: 100%; padding: 10px 12px; border: 1px solid #e2e8f0;
+      border-radius: 8px; font-size: 14px; font-family: inherit;
+      color: #1e293b; background: #f8fafc; transition: border-color 0.15s;
+    }
+    .fg textarea { height: 90px; resize: vertical; }
+    .fg input:focus, .fg select:focus, .fg textarea:focus {
+      outline: none; border-color: #0066cc; background: white;
+      box-shadow: 0 0 0 3px rgba(0,102,204,0.08);
+    }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-actions { display: flex; gap: 12px; margin-top: 8px; }
+    .btn-primary { background: #003087; color: white; border: none; padding: 11px 28px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; }
+    .btn-primary:hover { background: #002060; }
+    .btn-secondary { background: white; color: #64748b; border: 1px solid #e2e8f0; padding: 11px 28px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; display: none; }
+    .btn-secondary:hover { background: #f8fafc; }
+    .success-msg { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 14px; font-weight: 600; display: none; }
+ 
+    /* AI ASSISTANT */
+    .ai-outer { max-width: 760px; }
+    .ai-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .ai-card h2 { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
+    .ai-sub { font-size: 13px; color: #64748b; margin-bottom: 24px; }
+    .ai-result { margin-top: 20px; background: #f8fafc; border-radius: 10px; padding: 20px; border: 1px solid #e2e8f0; display: none; }
+    .ai-result-label { font-size: 11px; font-weight: 700; color: #003087; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+    .ai-text { font-size: 14px; color: #374151; line-height: 1.7; white-space: pre-wrap; }
+    .ai-disc { font-size: 12px; color: #94a3b8; margin-top: 12px; font-style: italic; }
+    .ai-spinner { font-size: 14px; color: #64748b; text-align: center; padding: 18px; display: none; }
+    .btn-purple { background: #7c3aed; color: white; border: none; padding: 11px 28px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; }
+    .btn-purple:hover { background: #6d28d9; }
+ 
+    /* UTILITY */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    .empty { text-align: center; padding: 60px 20px; }
+    .empty h3 { font-size: 15px; font-weight: 600; color: #64748b; margin-bottom: 8px; }
+    .empty p { font-size: 13px; color: #94a3b8; }
+    .loading { text-align: center; padding: 60px; color: #64748b; font-size: 14px; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+ 
+    /* SIDE PANEL */
+    .panel-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.25); z-index: 200;
+    }
+    .side-panel {
+      position: fixed; top: 56px; right: 0; bottom: 0; width: 420px;
+      background: white; z-index: 201;
+      transform: translateX(100%); transition: transform 0.25s ease;
+      border-left: 1px solid #e2e8f0; overflow-y: auto;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.1);
+    }
+    .side-panel.open { transform: translateX(0); }
+    .panel-header {
+      padding: 18px 20px; border-bottom: 1px solid #f1f5f9;
+      display: flex; justify-content: space-between; align-items: center;
+      position: sticky; top: 0; background: white; z-index: 1;
+    }
+    .panel-header-title { font-size: 15px; font-weight: 700; color: #1e293b; }
+    .panel-close {
+      background: none; border: none; cursor: pointer;
+      font-size: 20px; color: #94a3b8; line-height: 1; padding: 2px 6px;
+      border-radius: 4px;
+    }
+    .panel-close:hover { background: #f1f5f9; color: #374151; }
+    .panel-body { padding: 20px; }
+    .panel-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 10px; line-height: 1.4; }
+    .panel-fields { background: #f8fafc; border-radius: 8px; padding: 14px; margin-bottom: 16px; }
+    .panel-field { display: flex; gap: 10px; padding: 5px 0; border-bottom: 1px solid #f1f5f9; font-size: 13px; }
+    .panel-field:last-child { border-bottom: none; }
+    .panel-flabel { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; min-width: 88px; padding-top: 1px; }
+    .panel-fval { color: #374151; font-weight: 500; }
+    .panel-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; margin-top: 16px; }
+    .panel-section-title.flags { color: #dc2626; }
+    .panel-section-title.similar { color: #0369a1; }
+    .panel-flag { font-size: 12px; color: #b91c1c; background: #fff5f5; border-left: 3px solid #f87171; padding: 5px 10px; margin-bottom: 4px; border-radius: 0 6px 6px 0; }
+    .panel-similar-item { font-size: 12px; padding: 8px 10px; background: #f0f9ff; border-left: 3px solid #7dd3fc; border-radius: 0 6px 6px 0; margin-bottom: 4px; }
+    .panel-similar-name { font-weight: 600; color: #1e293b; }
+    .panel-similar-meta { color: #64748b; margin-top: 2px; }
+  </style>
+</head>
+<body>
+ 
+<!-- HEADER -->
+<div class="header">
+  <div class="header-brand">
+    <div class="header-logo">WWT</div>
+    <div>
+      <div class="header-title">BSA Project Overlap Tracker</div>
+      <div class="header-sub">Strategic Initiatives and Operations</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="refresh-time" id="refresh-time">Loading...</div>
+    <button class="btn-refresh" id="refresh-btn" onclick="doRefresh()">Refresh</button>
+  </div>
+</div>
+ 
+<!-- SIDEBAR -->
+<div class="sidebar">
+  <div class="nav-section">
+    <div class="nav-label">Projects</div>
+    <div class="nav-item active" id="nav-large" onclick="switchTab('large', this)">
+      <span class="nav-icon">&#128218;</span> Large Projects
+      <span class="nav-badge blue" id="nb-large">0</span>
+    </div>
+    <div class="nav-item" id="nav-enhancements" onclick="switchTab('enhancements', this)">
+      <span class="nav-icon">&#9889;</span> Enhancements
+      <span class="nav-badge blue" id="nb-enh">0</span>
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Analysis</div>
+    <div class="nav-item" id="nav-review" onclick="switchTab('review', this)">
+      <span class="nav-icon">&#128680;</span> Needs Review
+      <span class="nav-badge red" id="nb-review" style="display:none">0</span>
+    </div>
+    <div class="nav-item" id="nav-impact" onclick="switchTab('impact', this)">
+      <span class="nav-icon">&#128279;</span> Project Impact
+    </div>
+    <div class="nav-item" id="nav-heatmap" onclick="switchTab('heatmap', this)">
+      <span class="nav-icon">&#128202;</span> Heatmap
+    </div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Actions</div>
+    <div class="nav-item" id="nav-add" onclick="switchTab('add', this)">
+      <span class="nav-icon">&#43;</span> Add Project
+    </div>
+    <div class="nav-item" id="nav-ai" onclick="switchTab('ai', this)">
+      <span class="nav-icon">&#129302;</span> AI Assistant
+    </div>
+  </div>
+</div>
+ 
+<!-- MAIN -->
+<div class="main">
+ 
+  <!-- STATS STRIP -->
+  <div class="stats-strip">
+    <div class="stat-card">
+      <div class="stat-dot navy"></div>
+      <div><div class="stat-value" id="s-total">-</div><div class="stat-lbl">Total Active</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-dot red"></div>
+      <div><div class="stat-value" id="s-high">-</div><div class="stat-lbl">High Touch</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-dot orange"></div>
+      <div><div class="stat-value" id="s-med">-</div><div class="stat-lbl">Medium</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-dot green"></div>
+      <div><div class="stat-value" id="s-low">-</div><div class="stat-lbl">Low Touch</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-dot purple"></div>
+      <div><div class="stat-value" id="s-coown">-</div><div class="stat-lbl">Co-Owned</div></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-dot navy"></div>
+      <div><div class="stat-value" id="s-bsas">-</div><div class="stat-lbl">BSA Members</div></div>
+    </div>
+  </div>
+ 
+  <!-- LARGE PROJECTS -->
+  <div id="tab-large" class="tab-content active">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Large Projects</div>
+        <div class="page-sub">Manually entered projects not tracked in Smartsheet</div>
+      </div>
+      <div class="count-pill" id="c-large">0 projects</div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="f-large-search" placeholder="Search projects..." oninput="renderLarge()"/>
+      <select id="f-large-bsa" onchange="renderLarge()"><option value="">All BSAs</option></select>
+      <select id="f-large-status" onchange="renderLarge()"><option value="">All Statuses</option></select>
+      <select id="f-large-risk" onchange="renderLarge()">
+        <option value="">All Risk Levels</option>
+        <option>High Touch</option><option>Medium</option><option>Low Touch</option>
+      </select>
+    </div>
+    <div class="cards-grid" id="cards-large"><div class="loading">Loading...</div></div>
+  </div>
+ 
+  <!-- ENHANCEMENTS -->
+  <div id="tab-enhancements" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Smartsheet Enhancements</div>
+        <div class="page-sub">Live from the intake form. Use "Link to Project" on a card to connect it to a large project above.</div>
+      </div>
+      <div class="count-pill" id="c-enh">0 enhancements</div>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="f-enh-search" placeholder="Search..." oninput="renderEnh()"/>
+      <select id="f-enh-bsa" onchange="renderEnh()"><option value="">All BSAs</option></select>
+      <select id="f-enh-sys" onchange="renderEnh()"><option value="">All Systems</option></select>
+      <select id="f-enh-risk" onchange="renderEnh()">
+        <option value="">All Risk Levels</option>
+        <option>High Touch</option><option>Medium</option><option>Low Touch</option>
+      </select>
+    </div>
+    <div class="cards-grid" id="cards-enh"><div class="loading">Loading...</div></div>
+  </div>
+ 
+  <!-- NEEDS REVIEW -->
+  <div id="tab-review" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Needs Review</div>
+        <div class="page-sub">High Touch and Medium projects flagged for coordination attention.</div>
+      </div>
+      <div class="count-pill" id="c-review">0 projects</div>
+    </div>
+    <div class="filter-bar">
+      <select id="f-rev-bsa" onchange="renderReview()"><option value="">All BSAs</option></select>
+      <select id="f-rev-risk" onchange="renderReview()">
+        <option value="">High Touch + Medium</option>
+        <option value="High Touch">High Touch only</option>
+        <option value="Medium">Medium only</option>
+      </select>
+    </div>
+    <div class="cards-grid" id="cards-review"></div>
+  </div>
+ 
+  <!-- PROJECT IMPACT -->
+  <div id="tab-impact" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Project Impact</div>
+        <div class="page-sub">Projects are linked when they share a BSA owner, the same system, or when an enhancement has been linked to a large project.</div>
+      </div>
+    </div>
+    <div id="cards-impact"></div>
+  </div>
+ 
+  <!-- HEATMAP -->
+  <div id="tab-heatmap" class="tab-content">
+    <div class="page-hd">
+      <div><div class="page-title">Overlap Heatmap</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div><span>3 or more projects</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div><span>2 projects</span></div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div><span>1 project</span></div>
+    </div>
+    <div class="wl-card">
+      <div class="wl-card-title">BSA Workload (enhancements from Smartsheet; add large projects manually)</div>
+      <div id="wl-bars"></div>
+    </div>
+    <div class="hm-wrap">
+      <div class="hm-title">System x BSA Grid</div>
+      <table class="hm-table" id="hm-table"></table>
+    </div>
+  </div>
+ 
+  <!-- ADD PROJECT -->
+  <div id="tab-add" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title" id="form-title">Add Large Project</div>
+        <div class="page-sub">For projects NOT in Smartsheet - strategic initiatives, large programs, anything the team is working on that was never submitted through the intake form.</div>
+      </div>
+    </div>
+    <div class="form-outer">
+      <div class="form-card">
+        <div class="success-msg" id="form-ok">Project saved successfully!</div>
+        <input type="hidden" id="edit-id"/>
+        <div class="form-row">
+          <div class="fg"><label>Project Name *</label><input type="text" id="fp-name" placeholder="e.g. Beeline VMS"/></div>
+          <div class="fg">
+            <label>Project Type</label>
+            <select id="fp-type">
+              <option>Large Strategic Project</option>
+              <option>Enhancement</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="fg">
+            <label>BSA Owner *</label>
+            <select id="fp-bsa">
+              <option value="">Select BSA...</option>
+              <option>Jordan Butler</option><option>Zack Godat</option>
+              <option>Jennifer Bednar</option><option>Dustin Hartrick</option>
+              <option>Ellen Clegg</option><option>Jennifer Cummings</option>
+              <option>Angela Rhodes</option><option>Tori Yardley</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Status</label>
+            <select id="fp-status">
+              <option>In Progress</option><option>Discovery</option>
+              <option>New</option><option>Under Review</option><option>On Hold</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg">
+          <label>Primary System Impacted *</label>
+          <select id="fp-system">
+            <option value="">Select system...</option>
+            <option>Empower Enhancement</option><option>Deal Enhancement</option>
+            <option>CRM/Salesforce Enhancement</option><option>Solution Enhancement</option>
+            <option>Data Warehouse/Analytics</option><option>SQT Enhancement</option>
+            <option>ServiceNow Enhancement</option><option>Oracle/Finance</option>
+            <option>Beeline</option><option>Bullhorn</option>
+            <option>Service Quoting Tool</option><option>Oracle</option>
+            <option>Multiple Systems</option><option>Other</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="fg"><label>Primary Stakeholder / Requestor *</label><input type="text" id="fp-stake" placeholder="e.g. Jessica Gramlich"/></div>
+          <div class="fg">
+            <label>Business Priority</label>
+            <select id="fp-priority">
+              <option>High</option><option>Medium</option><option>Low</option><option>Unknown</option>
+            </select>
+          </div>
+        </div>
+        <div class="fg"><label>Notes / Description</label><textarea id="fp-notes" placeholder="Context, blockers, current status details..."></textarea></div>
+        <div class="form-actions">
+          <button class="btn-primary" onclick="submitProject()">Save Project</button>
+          <button class="btn-secondary" id="btn-cancel" onclick="cancelEdit()">Cancel Edit</button>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+  <!-- AI ASSISTANT -->
+  <div id="tab-ai" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">AI Assistant</div>
+        <div class="page-sub">Select a project, paste your notes, and get a suggested update. You decide - nothing is written to Smartsheet automatically.</div>
+      </div>
+    </div>
+    <div class="ai-outer">
+      <div class="ai-card">
+        <div class="fg">
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Project</label>
+          <select id="ai-proj" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f8fafc;">
+            <option value="">Choose a project...</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Your Notes / Context</label>
+          <textarea id="ai-notes" style="width:100%;height:140px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="Paste meeting notes, Teams messages, status bullets. The AI will suggest a clean project update."></textarea>
+        </div>
+        <button class="btn-purple" onclick="runAI()">Analyze and Suggest</button>
+        <div class="ai-spinner" id="ai-spin">Thinking... this takes about 10 seconds</div>
+        <div class="ai-result" id="ai-result">
+          <div class="ai-result-label">AI Suggested Update</div>
+          <div class="ai-text" id="ai-text"></div>
+          <div class="ai-disc" id="ai-disc"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+ 
+</div><!-- /main -->
+ 
+<!-- SIDE PANEL OVERLAY -->
+<div class="panel-overlay" id="panel-overlay" onclick="closeDetail()"></div>
+ 
+<!-- SIDE PANEL -->
+<div class="side-panel" id="side-panel">
+  <div class="panel-header">
+    <div class="panel-header-title">Project Detail</div>
+    <button class="panel-close" onclick="closeDetail()">&#215;</button>
+  </div>
+  <div class="panel-body" id="panel-body"></div>
+</div>
+ 
+<script>
+  var allData = null;
+  var allLinks = {}; // { enhancement_ref_id: large_project_ref_id }
+ 
+  // ── DATA LOAD ──────────────────────────────────────────────────────────────
+ 
+  async function loadData() {
+    document.getElementById('refresh-time').textContent = 'Loading...';
+    try {
+      var [projRes, linkRes] = await Promise.all([
+        fetch('/api/projects'),
+        fetch('/api/links')
+      ]);
+      allData = await projRes.json();
+      allLinks = await linkRes.json();
+    } catch(e) {
+      document.getElementById('refresh-time').textContent = 'Error - is server.py running?';
+      return;
+    }
+    document.getElementById('refresh-time').textContent = allData.last_refreshed || 'just now';
+    updateStats();
+    populateFilters();
+    populateAI();
+    renderLarge();
+    renderEnh();
+    renderReview();
+    renderImpact();
+    renderHeatmap();
+    updateNavBadges();
+  }
+ 
+  async function doRefresh() {
+    var btn = document.getElementById('refresh-btn');
+    btn.textContent = 'Refreshing...';
+    btn.disabled = true;
+    document.getElementById('refresh-time').textContent = 'Pulling from Smartsheet...';
+    try {
+      var res = await fetch('/api/refresh');
+      var data = await res.json();
+      if (data.success) {
+        await loadData();
+      } else {
+        document.getElementById('refresh-time').textContent = 'Refresh failed - check server logs';
+      }
+    } catch(e) {
+      document.getElementById('refresh-time').textContent = 'Error connecting to server';
+    }
+    btn.textContent = 'Refresh';
+    btn.disabled = false;
+  }
+ 
+  function updateStats() {
+    var s = allData.summary;
+    document.getElementById('s-total').textContent = s.total_active;
+    document.getElementById('s-high').textContent = s.high_touch_count;
+    document.getElementById('s-med').textContent = s.medium_count;
+    document.getElementById('s-low').textContent = s.low_touch_count;
+    document.getElementById('s-coown').textContent = s.co_owned_count;
+    document.getElementById('s-bsas').textContent = s.total_bsas;
+  }
+ 
+  function updateNavBadges() {
+    var large = allData.projects.filter(function(p){ return p.source === 'manual'; }).length;
+    var enh = allData.projects.filter(function(p){ return p.source === 'smartsheet'; }).length;
+    var rev = allData.projects.filter(function(p){ return p.risk_level === 'High Touch' || p.risk_level === 'Medium'; }).length;
+    document.getElementById('nb-large').textContent = large;
+    document.getElementById('nb-enh').textContent = enh;
+    var revBadge = document.getElementById('nb-review');
+    if (rev > 0) { revBadge.textContent = rev; revBadge.style.display = ''; }
+    else { revBadge.style.display = 'none'; }
+  }
+ 
+  // ── TAB SWITCHING ──────────────────────────────────────────────────────────
+ 
+  function switchTab(name, el) {
+    document.querySelectorAll('.tab-content').forEach(function(t){ t.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+    document.getElementById('tab-' + name).classList.add('active');
+    el.classList.add('active');
+  }
+ 
+  // ── BADGE HELPERS ──────────────────────────────────────────────────────────
+ 
+  function riskBadge(risk) {
+    var cls = risk === 'High Touch' ? 'b-high' : risk === 'Medium' ? 'b-medium' : 'b-low';
+    return '<span class="badge ' + cls + '">' + risk + '</span>';
+  }
+ 
+  function sourceBadge(source) {
+    return source === 'manual'
+      ? '<span class="badge b-manual">Manual</span>'
+      : '<span class="badge b-smart">Smartsheet</span>';
+  }
+ 
+  // ── CARD BUILDER ──────────────────────────────────────────────────────────
+ 
+  function buildCard(p, opts) {
+    opts = opts || {};
+    var isManual = p.source === 'manual';
+    var flags = (p.flags || []).map(function(f){ return '<div class="flag-item">' + f + '</div>'; }).join('');
+    var linkedEnhancements = '';
+    if (isManual) {
+      var linked = Object.keys(allLinks).filter(function(eid){ return allLinks[eid] === p.ref_id; });
+      if (linked.length > 0) {
+        var items = linked.map(function(eid){
+          var ep = allData.projects.find(function(x){ return x.ref_id === eid; });
+          return ep ? '<div class="linked-item">' + ep.title + '</div>' : '';
+        }).join('');
+        linkedEnhancements = '<div class="card-linked"><div class="linked-title">Linked Enhancements (' + linked.length + ')</div>' + items + '</div>';
+      }
+    }
+    var linkSection = '';
+    if (!isManual) {
+      var manualProjects = allData.projects.filter(function(x){ return x.source === 'manual'; });
+      var currentLink = allLinks[p.ref_id];
+      if (currentLink) {
+        var parentProject = manualProjects.find(function(x){ return x.ref_id === currentLink; });
+        var parentName = parentProject ? parentProject.title : currentLink;
+        linkSection = '<div class="card-link"><div class="link-title">Part of Large Project</div>'
+          + '<div class="linked-to"><span class="linked-badge">' + parentName + '</span>'
+          + '<button class="btn-unlink" onclick="unlinkProject(\'' + p.ref_id + '\')" title="Remove link">x</button></div></div>';
+      } else if (manualProjects.length > 0) {
+        var opts2 = manualProjects.map(function(mp){
+          return '<option value="' + mp.ref_id + '">' + mp.title + '</option>';
+        }).join('');
+        linkSection = '<div class="card-link"><div class="link-title">Link to Large Project</div>'
+          + '<div class="link-row"><select id="lk-' + p.ref_id + '"><option value="">Select project...</option>' + opts2 + '</select>'
+          + '<button class="btn-link" onclick="linkProject(\'' + p.ref_id + '\')">Link</button></div></div>';
+      }
+    }
+    var footer = '<div class="card-footer" onclick="event.stopPropagation()">';
+    if (isManual) {
+      footer += '<button class="btn-edit" onclick="event.stopPropagation();editProject(\'' + p.ref_id + '\')">Edit</button>';
+      footer += '<button class="btn-del" onclick="event.stopPropagation();deleteProject(\'' + p.ref_id + '\')">Delete</button>';
+    }
+    footer += '<button class="btn-ai" onclick="event.stopPropagation();aiFor(\'' + p.ref_id + '\')">AI Update</button>';
+    footer += '<span class="source-pill">' + sourceBadge(p.source) + '</span></div>';
+    return '<div class="card" onclick="showDetail(\'' + p.ref_id + '\')" style="cursor:pointer;">'
+      + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
+      + '<div class="badge-row">' + riskBadge(p.risk_level) + '<span class="badge b-status">' + p.status + '</span></div></div></div>'
+      + '<div class="card-fields">'
+      + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + p.bsa_owner + '</span></div>'
+      + '<div class="frow"><span class="flabel">System</span><span class="fval strong">' + (p.system || 'Unknown') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Stakeholder</span><span class="fval strong">' + (p.requestor || '--') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Priority</span><span class="fval">' + (p.priority || 'Unknown') + '</span></div>'
+      + (p.notes ? '<div class="frow"><span class="flabel">Notes</span><span class="fval">' + p.notes + '</span></div>' : '')
+      + '</div>'
+      + (flags ? '<div class="card-flags">' + flags + '</div>' : '')
+      + linkedEnhancements
+      + linkSection
+      + footer
+      + '</div>';
+  }
+ 
+  function applyFilters(projects, searchId, bsaId, riskId, sysId) {
+    var q = (document.getElementById(searchId) ? document.getElementById(searchId).value : '').toLowerCase();
+    var bsa = document.getElementById(bsaId) ? document.getElementById(bsaId).value : '';
+    var risk = document.getElementById(riskId) ? document.getElementById(riskId).value : '';
+    var sys = sysId && document.getElementById(sysId) ? document.getElementById(sysId).value : '';
+    if (q) projects = projects.filter(function(p){ return (p.title + p.bsa_owner + p.system + p.requestor).toLowerCase().includes(q); });
+    if (bsa) projects = projects.filter(function(p){ return p.bsa_owner.includes(bsa); });
+    if (risk) projects = projects.filter(function(p){ return p.risk_level === risk; });
+    if (sys) projects = projects.filter(function(p){ return p.system === sys; });
+    return projects;
+  }
+ 
+  // ── RENDER TABS ────────────────────────────────────────────────────────────
+ 
+  function renderLarge() {
+    if (!allData) return;
+    var status = document.getElementById('f-large-status') ? document.getElementById('f-large-status').value : '';
+    var p = allData.projects.filter(function(x){ return x.source === 'manual'; });
+    p = applyFilters(p, 'f-large-search', 'f-large-bsa', 'f-large-risk', null);
+    if (status) p = p.filter(function(x){ return x.status === status; });
+    document.getElementById('c-large').textContent = p.length + ' projects';
+    document.getElementById('cards-large').innerHTML = p.length
+      ? p.map(function(x){ return buildCard(x); }).join('')
+      : '<div class="empty"><h3>No large projects yet</h3><p>Use Add Project to enter strategic projects not in Smartsheet<br>(Beeline VMS, First Light, SOW Governance, etc.)</p></div>';
+  }
+ 
+  function renderEnh() {
+    if (!allData) return;
+    var p = allData.projects.filter(function(x){ return x.source === 'smartsheet'; });
+    p = applyFilters(p, 'f-enh-search', 'f-enh-bsa', 'f-enh-risk', 'f-enh-sys');
+    document.getElementById('c-enh').textContent = p.length + ' enhancements';
+    document.getElementById('cards-enh').innerHTML = p.length
+      ? p.map(function(x){ return buildCard(x); }).join('')
+      : '<div class="empty"><h3>No enhancements match</h3></div>';
+  }
+ 
+  function renderReview() {
+    if (!allData) return;
+    var bsa = document.getElementById('f-rev-bsa') ? document.getElementById('f-rev-bsa').value : '';
+    var riskFilter = document.getElementById('f-rev-risk') ? document.getElementById('f-rev-risk').value : '';
+    var p = allData.projects.filter(function(x){ return x.risk_level === 'High Touch' || x.risk_level === 'Medium'; });
+    if (bsa) p = p.filter(function(x){ return x.bsa_owner.includes(bsa); });
+    if (riskFilter) p = p.filter(function(x){ return x.risk_level === riskFilter; });
+    document.getElementById('c-review').textContent = p.length + ' projects';
+    document.getElementById('cards-review').innerHTML = p.length
+      ? p.map(function(x){ return buildCard(x); }).join('')
+      : '<div class="empty"><h3>Nothing needs review right now</h3></div>';
+  }
+ 
+  function renderImpact() {
+    if (!allData) return;
+    var projects = allData.projects;
+    var html = '';
+    projects.forEach(function(p) {
+      var sharedBSA = projects.filter(function(o){
+        if (o.ref_id === p.ref_id) return false;
+        return o.bsa_owner.split(',').map(function(b){ return b.trim(); }).some(function(b){ return p.bsa_owner.includes(b); });
+      });
+      var sharedSys = projects.filter(function(o){
+        return o.ref_id !== p.ref_id && o.system && o.system !== 'Unknown' && o.system === p.system;
+      });
+      // Enhancements linked to this project
+      var linkedEnh = [];
+      if (p.source === 'manual') {
+        var eids = Object.keys(allLinks).filter(function(eid){ return allLinks[eid] === p.ref_id; });
+        linkedEnh = eids.map(function(eid){
+          return allData.projects.find(function(x){ return x.ref_id === eid; });
+        }).filter(Boolean);
+      }
+      // Parent project if this is an enhancement
+      var parentProject = null;
+      if (p.source === 'smartsheet' && allLinks[p.ref_id]) {
+        parentProject = projects.find(function(x){ return x.ref_id === allLinks[p.ref_id]; });
+      }
+      if (sharedBSA.length === 0 && sharedSys.length === 0 && linkedEnh.length === 0 && !parentProject) return;
+      html += '<div class="impact-card">'
+        + '<div class="ic-title">' + p.title + '</div>'
+        + '<div class="ic-meta"><span>BSA: ' + p.bsa_owner + '</span><span>System: ' + p.system + '</span><span>' + riskBadge(p.risk_level) + '</span></div>';
+      if (parentProject) {
+        html += '<div class="ic-group-label enh">Part of Large Project</div>'
+          + '<div class="ic-item sys">' + parentProject.title + ' (' + parentProject.bsa_owner + ')</div>';
+      }
+      if (linkedEnh.length > 0) {
+        html += '<div class="ic-group-label enh">Linked Enhancements (' + linkedEnh.length + ')</div>'
+          + linkedEnh.slice(0, 8).map(function(e){ return '<div class="ic-item sys">' + e.title + ' (' + e.bsa_owner + ')</div>'; }).join('');
+      }
+      if (sharedBSA.length > 0) {
+        html += '<div class="ic-group-label bsa">Shared BSA Owner</div>'
+          + sharedBSA.slice(0, 6).map(function(o){ return '<div class="ic-item bsa">' + o.title + ' - ' + o.bsa_owner + '</div>'; }).join('');
+      }
+      if (sharedSys.length > 0) {
+        html += '<div class="ic-group-label sys">Same System: ' + p.system + '</div>'
+          + sharedSys.slice(0, 6).map(function(o){ return '<div class="ic-item sys">' + o.title + ' - ' + o.bsa_owner + '</div>'; }).join('');
+      }
+      html += '</div>';
+    });
+    document.getElementById('cards-impact').innerHTML = html
+      || '<div class="empty"><h3>No impact relationships detected yet</h3><p>Add large projects and link enhancements to them to see how they relate.</p></div>';
+  }
+ 
+  function renderHeatmap() {
+    if (!allData) return;
+    var maxN = Math.max.apply(null, allData.bsa_workload.map(function(b){ return b.active_count || 1; }));
+    var barsHtml = '';
+    allData.bsa_workload.slice().sort(function(a,b){ return b.active_count - a.active_count; }).forEach(function(b){
+      var pct = Math.round((b.active_count / maxN) * 100);
+      barsHtml += '<div class="wl-row">'
+        + '<div class="wl-name">' + b.name + '</div>'
+        + '<div class="wl-bar-bg"><div class="wl-fill ' + (b.overloaded ? 'over' : '') + '" style="width:' + pct + '%"><span class="wl-n">' + b.active_count + '</span></div></div>'
+        + (b.overloaded ? '<span class="over-tag">Overloaded</span>' : '')
+        + '</div>';
+    });
+    document.getElementById('wl-bars').innerHTML = barsHtml;
+ 
+    var bsas = allData.bsa_workload.map(function(b){ return b.name; });
+    var systems = allData.system_overlap.filter(function(s){ return s.system !== 'Unknown'; }).map(function(s){ return s.system; });
+    var grid = {};
+    allData.projects.forEach(function(p){
+      if (!p.system || p.system === 'Unknown') return;
+      p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
+        var k = p.system + '|' + b;
+        grid[k] = (grid[k] || 0) + 1;
+      });
+    });
+    var tbl = '<thead><tr><th>System</th>'
+      + bsas.map(function(b){ var parts = b.split(' '); return '<th>' + parts[0] + '<br>' + parts.slice(1).join(' ') + '</th>'; }).join('')
+      + '</tr></thead><tbody>'
+      + systems.map(function(sys){
+          return '<tr><td class="rname">' + sys + '</td>'
+            + bsas.map(function(b){
+                var c = grid[sys + '|' + b] || 0;
+                var cls = c >= 3 ? 'c3' : c === 2 ? 'c2' : c === 1 ? 'c1' : 'c0';
+                return '<td class="' + cls + '">' + (c || '--') + '</td>';
+              }).join('')
+            + '</tr>';
+        }).join('')
+      + '</tbody>';
+    document.getElementById('hm-table').innerHTML = tbl;
+  }
+ 
+  // ── POPULATE FILTERS / AI SELECT ──────────────────────────────────────────
+ 
+  function populateFilters() {
+    var bsas = [], systems = [], statuses = [];
+    allData.projects.forEach(function(p){
+      p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){ if (b && !bsas.includes(b)) bsas.push(b); });
+      if (p.system && p.system !== 'Unknown' && !systems.includes(p.system)) systems.push(p.system);
+      if (p.status && !statuses.includes(p.status)) statuses.push(p.status);
+    });
+    bsas.sort(); systems.sort(); statuses.sort();
+    var bsaOpts = '<option value="">All BSAs</option>' + bsas.map(function(b){ return '<option>' + b + '</option>'; }).join('');
+    ['f-large-bsa','f-enh-bsa','f-rev-bsa'].forEach(function(id){
+      var el = document.getElementById(id);
+      if (el) { var cur = el.value; el.innerHTML = bsaOpts; if (cur) el.value = cur; }
+    });
+    var sysEl = document.getElementById('f-enh-sys');
+    if (sysEl) sysEl.innerHTML = '<option value="">All Systems</option>' + systems.map(function(s){ return '<option>' + s + '</option>'; }).join('');
+    var stEl = document.getElementById('f-large-status');
+    if (stEl) stEl.innerHTML = '<option value="">All Statuses</option>' + statuses.map(function(s){ return '<option>' + s + '</option>'; }).join('');
+  }
+ 
+  function populateAI() {
+    var sel = document.getElementById('ai-proj');
+    sel.innerHTML = '<option value="">Choose a project...</option>'
+      + allData.projects.map(function(p){
+          return '<option value="' + p.ref_id + '">[' + (p.source === 'manual' ? 'M' : 'SS') + '] ' + p.title + ' - ' + p.bsa_owner + '</option>';
+        }).join('');
+  }
+ 
+  // ── CRUD ──────────────────────────────────────────────────────────────────
+ 
+  async function submitProject() {
+    var refId = document.getElementById('edit-id').value;
+    var name = document.getElementById('fp-name').value.trim();
+    var bsa = document.getElementById('fp-bsa').value;
+    if (!name || !bsa) { alert('Project Name and BSA Owner are required.'); return; }
+    var body = {
+      project_name: name, bsa_owner: bsa,
+      system: document.getElementById('fp-system').value,
+      status: document.getElementById('fp-status').value,
+      primary_stakeholder: document.getElementById('fp-stake').value,
+      business_priority: document.getElementById('fp-priority').value,
+      notes: document.getElementById('fp-notes').value,
+      project_type: document.getElementById('fp-type').value,
+    };
+    try {
+      var res = await fetch(refId ? '/api/manual/' + refId : '/api/manual', {
+        method: refId ? 'PUT' : 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        var ok = document.getElementById('form-ok');
+        ok.style.display = 'block';
+        setTimeout(function(){ ok.style.display = 'none'; }, 3000);
+        clearForm();
+        loadData();
+      } else { alert('Error saving. Try again.'); }
+    } catch(e) { alert('Cannot connect to server. Is server.py running?'); }
+  }
+ 
+  function clearForm() {
+    document.getElementById('edit-id').value = '';
+    document.getElementById('fp-name').value = '';
+    document.getElementById('fp-stake').value = '';
+    document.getElementById('fp-notes').value = '';
+    document.getElementById('fp-bsa').value = '';
+    document.getElementById('fp-system').value = '';
+    document.getElementById('fp-status').value = 'In Progress';
+    document.getElementById('fp-priority').value = 'High';
+    document.getElementById('fp-type').value = 'Large Strategic Project';
+    document.getElementById('form-title').textContent = 'Add Large Project';
+    document.getElementById('btn-cancel').style.display = 'none';
+  }
+ 
+  function cancelEdit() { clearForm(); }
+ 
+  function editProject(refId) {
+    var p = allData.projects.find(function(x){ return x.ref_id === refId; });
+    if (!p) return;
+    document.getElementById('edit-id').value = refId;
+    document.getElementById('fp-name').value = p.title || '';
+    document.getElementById('fp-bsa').value = p.bsa_owner || '';
+    document.getElementById('fp-system').value = p.system || '';
+    document.getElementById('fp-status').value = p.status || 'In Progress';
+    document.getElementById('fp-stake').value = p.requestor || '';
+    document.getElementById('fp-priority').value = p.priority || 'High';
+    document.getElementById('fp-notes').value = p.notes || '';
+    document.getElementById('form-title').textContent = 'Editing: ' + p.title;
+    document.getElementById('btn-cancel').style.display = 'block';
+    switchTab('add', document.getElementById('nav-add'));
+    window.scrollTo(0,0);
+  }
+ 
+  async function deleteProject(refId) {
+    if (!confirm('Delete this project? This cannot be undone.')) return;
+    try {
+      var res = await fetch('/api/manual/' + refId, { method: 'DELETE' });
+      if (res.ok) { loadData(); } else { alert('Error deleting.'); }
+    } catch(e) { alert('Cannot connect to server.'); }
+  }
+ 
+  // ── LINK FEATURE ──────────────────────────────────────────────────────────
+ 
+  async function linkProject(enhRefId) {
+    var sel = document.getElementById('lk-' + enhRefId);
+    if (!sel || !sel.value) { alert('Please select a large project to link to.'); return; }
+    try {
+      var res = await fetch('/api/links', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ enhancement_ref_id: enhRefId, large_project_ref_id: sel.value })
+      });
+      if (res.ok) { await loadData(); }
+      else { alert('Error saving link.'); }
+    } catch(e) { alert('Cannot connect to server.'); }
+  }
+ 
+  async function unlinkProject(enhRefId) {
+    try {
+      var res = await fetch('/api/links/' + enhRefId, { method: 'DELETE' });
+      if (res.ok) { await loadData(); }
+      else { alert('Error removing link.'); }
+    } catch(e) { alert('Cannot connect to server.'); }
+  }
+ 
+  // ── AI ASSISTANT ──────────────────────────────────────────────────────────
+ 
+  function aiFor(refId) {
+    switchTab('ai', document.getElementById('nav-ai'));
+    document.getElementById('ai-proj').value = refId;
+    window.scrollTo(0,0);
+  }
+ 
+  async function runAI() {
+    var refId = document.getElementById('ai-proj').value;
+    var notes = document.getElementById('ai-notes').value.trim();
+    if (!refId) { alert('Please select a project.'); return; }
+    if (!notes) { alert('Please enter your notes.'); return; }
+    var project = allData.projects.find(function(p){ return p.ref_id === refId; });
+    document.getElementById('ai-spin').style.display = 'block';
+    document.getElementById('ai-result').style.display = 'none';
+    try {
+      var res = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ project: project, question: notes })
+      });
+      var data = await res.json();
+      document.getElementById('ai-text').textContent = data.suggestion || data.error || 'No response';
+      document.getElementById('ai-disc').textContent = data.disclaimer || '';
+      document.getElementById('ai-result').style.display = 'block';
+    } catch(e) {
+      document.getElementById('ai-text').textContent = 'Could not connect to AI. Make sure server.py is running and you are on a non-WWT network for Groq.';
+      document.getElementById('ai-result').style.display = 'block';
+    }
+    document.getElementById('ai-spin').style.display = 'none';
+  }
+ 
+  // ── SIDE PANEL ─────────────────────────────────────────────────────────────
+ 
+  function showDetail(refId) {
+    var p = allData.projects.find(function(x){ return x.ref_id === refId; });
+    if (!p) return;
+ 
+    var similar = allData.projects.filter(function(o){
+      return o.ref_id !== p.ref_id && o.system && o.system !== 'Unknown' && o.system === p.system;
+    });
+ 
+    var html = '<div class="panel-title">' + (p.title || 'Untitled') + '</div>'
+      + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">'
+      + riskBadge(p.risk_level) + ' ' + sourceBadge(p.source)
+      + '<span class="badge b-status">' + p.status + '</span></div>';
+ 
+    html += '<div class="panel-fields">'
+      + '<div class="panel-field"><span class="panel-flabel">BSA Owner</span><span class="panel-fval" style="font-weight:700;">' + p.bsa_owner + '</span></div>'
+      + '<div class="panel-field"><span class="panel-flabel">System</span><span class="panel-fval" style="font-weight:700;">' + (p.system || '--') + '</span></div>'
+      + '<div class="panel-field"><span class="panel-flabel">Stakeholder</span><span class="panel-fval">' + (p.requestor || '--') + '</span></div>'
+      + '<div class="panel-field"><span class="panel-flabel">Priority</span><span class="panel-fval">' + (p.priority || '--') + '</span></div>'
+      + '<div class="panel-field"><span class="panel-flabel">Overlap Score</span><span class="panel-fval">' + (p.overlap_score || 0) + ' / 4</span></div>'
+      + '</div>';
+ 
+    if (p.notes) {
+      html += '<div class="panel-section-title" style="color:#374151;">Notes</div>'
+        + '<div style="font-size:13px;color:#374151;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:4px;">' + p.notes + '</div>';
+    }
+ 
+    if (p.flags && p.flags.length > 0) {
+      html += '<div class="panel-section-title flags">Overlap Flags</div>'
+        + p.flags.map(function(f){ return '<div class="panel-flag">' + f + '</div>'; }).join('');
+    }
+ 
+    if (similar.length > 0) {
+      html += '<div class="panel-section-title similar">Similar Projects - Same System (' + similar.length + ')</div>'
+        + similar.slice(0, 8).map(function(o){
+            return '<div class="panel-similar-item">'
+              + '<div class="panel-similar-name">' + o.title + '</div>'
+              + '<div class="panel-similar-meta">' + o.bsa_owner + ' &nbsp;|&nbsp; ' + o.status + ' &nbsp;|&nbsp; ' + o.risk_level + '</div>'
+              + '</div>';
+          }).join('');
+    } else {
+      html += '<div class="panel-section-title similar">Similar Projects</div>'
+        + '<div style="font-size:13px;color:#94a3b8;padding:8px 0;">No other projects touch ' + (p.system || 'this system') + ' right now.</div>';
+    }
+ 
+    document.getElementById('panel-body').innerHTML = html;
+    document.getElementById('panel-overlay').style.display = 'block';
+    document.getElementById('side-panel').classList.add('open');
+  }
+ 
+  function closeDetail() {
+    document.getElementById('side-panel').classList.remove('open');
+    document.getElementById('panel-overlay').style.display = 'none';
+  }
+ 
+  loadData();
+</script>
+</body>
+</html>
+ 
