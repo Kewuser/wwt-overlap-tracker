@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: bsa-overlap-tracker
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python server.py
+    envVars:
+      - key: SMARTSHEET_TOKEN
+        sync: false
+      - key: SMARTSHEET_SHEET_ID
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+ 

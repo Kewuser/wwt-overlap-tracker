@@ -1,0 +1,6 @@
+flask
+smartsheet-python-sdk
+pandas
+openpyxl
+groq
+ 
