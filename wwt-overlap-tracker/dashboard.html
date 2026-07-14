@@ -561,16 +561,20 @@
     </div>
   </div>
  
-  <!-- AI ASSISTANT -->
+<!-- AI ASSISTANT -->
   <div id="tab-ai" class="tab-content">
     <div class="page-hd">
       <div>
         <div class="page-title">AI Assistant</div>
-        <div class="page-sub">Select a project, paste your notes, and get a suggested update. You decide - nothing is written to Smartsheet automatically.</div>
+        <div class="page-sub">Three tools powered by Groq AI. You decide what to do with the output - nothing is written to Smartsheet automatically.</div>
       </div>
     </div>
-    <div class="ai-outer">
+    <div class="ai-outer" style="display:flex;flex-direction:column;gap:20px;">
+
+      <!-- Tool 1: Project Update Suggester -->
       <div class="ai-card">
+        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Project Update Suggester</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Select a project, add notes, and get a suggested status update for your next check-in.</div>
         <div class="fg">
           <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Project</label>
           <select id="ai-proj" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f8fafc;">
@@ -579,7 +583,7 @@
         </div>
         <div class="fg">
           <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Your Notes / Context</label>
-          <textarea id="ai-notes" style="width:100%;height:140px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="Paste meeting notes, Teams messages, status bullets. The AI will suggest a clean project update."></textarea>
+          <textarea id="ai-notes" style="width:100%;height:110px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="Paste meeting notes, Teams messages, or status bullets. The AI will suggest a clean update."></textarea>
         </div>
         <button class="btn-purple" onclick="runAI()">Analyze and Suggest</button>
         <div class="ai-spinner" id="ai-spin">Thinking... this takes about 10 seconds</div>
@@ -589,9 +593,45 @@
           <div class="ai-disc" id="ai-disc"></div>
         </div>
       </div>
+
+      <!-- Tool 2: Draft Stakeholder Update -->
+      <div class="ai-card">
+        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Draft Stakeholder Update</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Generate a ready-to-send status update email or Teams message for a project stakeholder.</div>
+        <div class="fg">
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Project</label>
+          <select id="draft-proj" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f8fafc;">
+            <option value="">Choose a project...</option>
+          </select>
+        </div>
+        <div class="fg">
+          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Any extra context? (optional)</label>
+          <textarea id="draft-context" style="width:100%;height:80px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="e.g. 'Blocked on IT approval', 'Meeting next Tuesday', 'On track for August go-live'"></textarea>
+        </div>
+        <button class="btn-purple" onclick="runDraftUpdate()">Draft Stakeholder Update</button>
+        <div class="ai-spinner" id="draft-spin">Drafting... this takes about 10 seconds</div>
+        <div class="ai-result" id="draft-result">
+          <div class="ai-result-label">Draft Message</div>
+          <div class="ai-text" id="draft-text"></div>
+          <div class="ai-disc" id="draft-disc"></div>
+        </div>
+      </div>
+
+      <!-- Tool 3: Team Overview -->
+      <div class="ai-card">
+        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Team Overview</div>
+        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Analyze all High Touch projects across the team and get a Monday-meeting-ready summary of workload risks and coordination flags.</div>
+        <button class="btn-purple" onclick="runTeamOverview()">Generate Team Overview</button>
+        <div class="ai-spinner" id="overview-spin">Analyzing team workload... this takes about 15 seconds</div>
+        <div class="ai-result" id="overview-result">
+          <div class="ai-result-label">Team Overview</div>
+          <div class="ai-text" id="overview-text"></div>
+          <div class="ai-disc" id="overview-disc"></div>
+        </div>
+      </div>
+
     </div>
   </div>
- 
 </div><!-- /main -->
  
 <!-- SIDE PANEL OVERLAY -->
@@ -921,12 +961,13 @@
     if (stEl) stEl.innerHTML = '<option value="">All Statuses</option>' + statuses.map(function(s){ return '<option>' + s + '</option>'; }).join('');
   }
  
-  function populateAI() {
-    var sel = document.getElementById('ai-proj');
-    sel.innerHTML = '<option value="">Choose a project...</option>'
+function populateAI() {
+    var opts = '<option value="">Choose a project...</option>'
       + allData.projects.map(function(p){
           return '<option value="' + p.ref_id + '">[' + (p.source === 'manual' ? 'M' : 'SS') + '] ' + p.title + ' - ' + p.bsa_owner + '</option>';
         }).join('');
+    document.getElementById('ai-proj').innerHTML = opts;
+    document.getElementById('draft-proj').innerHTML = opts;
   }
  
   // ── CRUD ──────────────────────────────────────────────────────────────────
@@ -1058,7 +1099,50 @@
     }
     document.getElementById('ai-spin').style.display = 'none';
   }
- 
+ async function runDraftUpdate() {
+    var refId = document.getElementById('draft-proj').value;
+    if (!refId) { alert('Please select a project.'); return; }
+    var project = allData.projects.find(function(p){ return p.ref_id === refId; });
+    var context = document.getElementById('draft-context').value.trim();
+    document.getElementById('draft-spin').style.display = 'block';
+    document.getElementById('draft-result').style.display = 'none';
+    try {
+      var res = await fetch('/api/draft-update', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ project: project, context: context })
+      });
+      var data = await res.json();
+      document.getElementById('draft-text').textContent = data.draft || data.error || 'No response';
+      document.getElementById('draft-disc').textContent = data.disclaimer || '';
+      document.getElementById('draft-result').style.display = 'block';
+    } catch(e) {
+      document.getElementById('draft-text').textContent = 'Could not connect to AI.';
+      document.getElementById('draft-result').style.display = 'block';
+    }
+    document.getElementById('draft-spin').style.display = 'none';
+  }
+
+  async function runTeamOverview() {
+    if (!allData) { alert('Data not loaded yet.'); return; }
+    document.getElementById('overview-spin').style.display = 'block';
+    document.getElementById('overview-result').style.display = 'none';
+    try {
+      var res = await fetch('/api/team-overview', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ projects: allData.projects })
+      });
+      var data = await res.json();
+      document.getElementById('overview-text').textContent = data.summary || data.error || 'No response';
+      document.getElementById('overview-disc').textContent = data.disclaimer || '';
+      document.getElementById('overview-result').style.display = 'block';
+    } catch(e) {
+      document.getElementById('overview-text').textContent = 'Could not connect to AI.';
+      document.getElementById('overview-result').style.display = 'block';
+    }
+    document.getElementById('overview-spin').style.display = 'none';
+  }
   // ── SIDE PANEL ─────────────────────────────────────────────────────────────
  
   function showDetail(refId) {
