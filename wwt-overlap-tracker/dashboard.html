@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>BSA Project Overlap Tracker</title>
+  <title>BSA Project Visibility and Overlap Tracker</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Segoe UI', Arial, sans-serif; background: #f1f5f9; color: #1e293b; display: flex; flex-direction: column; min-height: 100vh; }
@@ -230,7 +230,7 @@
 
     /* FORM */
     .form-outer { max-width: 680px; }
-    .form-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+    .form-card { background: white; border-radius: 12px; border: 1px solid #e2e8f0; padding: 28px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); margin-bottom: 20px; }
     .form-card h2 { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 4px; }
     .form-sub { font-size: 13px; color: #64748b; margin-bottom: 24px; }
     .fg { margin-bottom: 18px; }
@@ -333,7 +333,7 @@
   <div class="header-brand">
     <div class="header-logo">WWT</div>
     <div>
-      <div class="header-title">BSA Project Overlap Tracker</div>
+      <div class="header-title">BSA Project Visibility and Overlap Tracker</div>
       <div class="header-sub">Strategic Initiatives and Operations</div>
     </div>
   </div>
@@ -369,9 +369,6 @@
     <div class="nav-label">Actions</div>
     <div class="nav-item" id="nav-add" onclick="switchTab('add', this)">
       Add Project
-    </div>
-    <div class="nav-item" id="nav-ai" onclick="switchTab('ai', this)">
-      AI Assistant
     </div>
     <div class="nav-item" id="nav-settings" onclick="switchTab('settings', this)">
       Settings
@@ -424,8 +421,8 @@
       <select id="f-large-bsa" onchange="renderLarge()"><option value="">All BSAs</option></select>
       <select id="f-large-status" onchange="renderLarge()"><option value="">All Statuses</option></select>
       <select id="f-large-risk" onchange="renderLarge()">
-        <option value="">All Risk Levels</option>
-        <option>High Touch</option><option>Medium</option><option>Low Touch</option>
+        <option value="">All Priorities</option>
+        <option>High</option><option>Medium</option><option>Low</option><option>Unknown</option>
       </select>
     </div>
     <div class="cards-grid" id="cards-large"><div class="loading">Loading...</div></div>
@@ -444,6 +441,7 @@
       <input type="text" id="f-enh-search" placeholder="Search..." oninput="renderEnh()"/>
       <select id="f-enh-bsa" onchange="renderEnh()"><option value="">All BSAs</option></select>
       <select id="f-enh-sys" onchange="renderEnh()"><option value="">All Systems</option></select>
+      <select id="f-enh-initiative" onchange="renderEnh()"><option value="">All Initiatives</option></select>
       <select id="f-enh-priority" onchange="renderEnh()">
         <option value="">All Priorities</option>
         <option>High</option><option>Medium</option><option>Low</option><option>Unknown</option>
@@ -466,8 +464,8 @@
       </div>
     </div>
     <div class="impact-filter-bar">
-      <button class="impact-cat-btn active" onclick="setImpactCat('systems', this)">Systems with 2+ Projects</button>
-      <button class="impact-cat-btn" onclick="setImpactCat('requestor', this)">Requestor with Multiple BSAs</button>
+      <button class="impact-cat-btn active" onclick="setImpactCat('systems', this)">Systems Touching 2+ Projects</button>
+      <button class="impact-cat-btn" onclick="setImpactCat('requestor', this)">Stakeholders with Multiple Active Projects</button>
       <button class="impact-cat-btn" onclick="setImpactCat('overloaded', this)">BSAs with 2+ Active Projects</button>
       <button class="impact-cat-btn" onclick="setImpactCat('coowned', this)">Co-Owned Projects</button>
     </div>
@@ -484,10 +482,6 @@
     <div class="wl-card">
       <div class="wl-card-title">BSA Workload by Team Members</div>
       <div id="wl-bars"></div>
-    </div>
-    <div class="hm-wrap" style="margin-bottom:20px;">
-      <div class="hm-title">System x BSA Grid</div>
-      <table class="hm-table" id="hm-table"></table>
     </div>
     <div class="hm-wrap">
       <div class="hm-title">System x Project Grid</div>
@@ -552,14 +546,14 @@
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Deal"> Deal</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="CRM/Salesforce"> CRM/Salesforce</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Solution"> Solution</label>
-            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Data Warehouse/Analytics"> Data Warehouse/Analytics</label>
-            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="SQT"> SQT</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="ServiceNow"> ServiceNow</label>
-            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Oracle/Finance"> Oracle/Finance</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Beeline"> Beeline</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Bullhorn"> Bullhorn</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Service Quoting Tool"> Service Quoting Tool</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Oracle"> Oracle</label>
+            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="One Talent"> One Talent</label>
+            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Glider"> Glider</label>
+            <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="SharePoint"> SharePoint</label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;"><input type="checkbox" name="fp-systems" value="Other" id="cb-other" onchange="document.getElementById('fp-system-other').style.display=this.checked?'block':'none'"> Other</label>
           </div>
           <input type="text" id="fp-system-other" placeholder="Please specify the system..." style="margin-top:8px;display:none;width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;color:#1e293b;background:#f8fafc;"/>
@@ -612,76 +606,6 @@
   </div>
 
   <!-- AI ASSISTANT -->
-  <div id="tab-ai" class="tab-content">
-    <div class="page-hd">
-      <div>
-        <div class="page-title">AI Assistant</div>
-        <div class="page-sub">Three tools powered by Groq AI. You decide what to do with the output - nothing is written to Smartsheet automatically.</div>
-      </div>
-    </div>
-    <div class="ai-outer" style="display:flex;flex-direction:column;gap:20px;">
-
-      <!-- Tool 1: Project Update Suggester -->
-      <div class="ai-card">
-        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Project Update Suggester</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Select a project, add notes, and get a suggested status update for your next check-in.</div>
-        <div class="fg">
-          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Project</label>
-          <select id="ai-proj" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f8fafc;">
-            <option value="">Choose a project...</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Your Notes / Context</label>
-          <textarea id="ai-notes" style="width:100%;height:110px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="Paste meeting notes, Teams messages, or status bullets. The AI will suggest a clean update."></textarea>
-        </div>
-        <button class="btn-purple" onclick="runAI()">Analyze and Suggest</button>
-        <div class="ai-spinner" id="ai-spin">Thinking... this takes about 10 seconds</div>
-        <div class="ai-result" id="ai-result">
-          <div class="ai-result-label">AI Suggested Update</div>
-          <div class="ai-text" id="ai-text"></div>
-          <div class="ai-disc" id="ai-disc"></div>
-        </div>
-      </div>
-
-      <!-- Tool 2: Draft Stakeholder Update -->
-      <div class="ai-card">
-        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Draft Stakeholder Update</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Generate a ready-to-send status update email or Teams message for a project stakeholder.</div>
-        <div class="fg">
-          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Select Project</label>
-          <select id="draft-proj" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;background:#f8fafc;">
-            <option value="">Choose a project...</option>
-          </select>
-        </div>
-        <div class="fg">
-          <label style="font-size:13px;font-weight:600;color:#374151;display:block;margin-bottom:6px;">Any extra context? (optional)</label>
-          <textarea id="draft-context" style="width:100%;height:80px;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;background:#f8fafc;resize:vertical;" placeholder="e.g. 'Blocked on IT approval', 'Meeting next Tuesday', 'On track for August go-live'"></textarea>
-        </div>
-        <button class="btn-purple" onclick="runDraftUpdate()">Draft Stakeholder Update</button>
-        <div class="ai-spinner" id="draft-spin">Drafting... this takes about 10 seconds</div>
-        <div class="ai-result" id="draft-result">
-          <div class="ai-result-label">Draft Message</div>
-          <div class="ai-text" id="draft-text"></div>
-          <div class="ai-disc" id="draft-disc"></div>
-        </div>
-      </div>
-
-      <!-- Tool 3: Team Overview -->
-      <div class="ai-card">
-        <div style="font-size:15px;font-weight:700;color:#003087;margin-bottom:4px;">Team Overview</div>
-        <div style="font-size:13px;color:#64748b;margin-bottom:16px;">Analyze all High Touch projects across the team and get a Monday-meeting-ready summary of workload risks and coordination flags.</div>
-        <button class="btn-purple" onclick="runTeamOverview()">Generate Team Overview</button>
-        <div class="ai-spinner" id="overview-spin">Analyzing team workload... this takes about 15 seconds</div>
-        <div class="ai-result" id="overview-result">
-          <div class="ai-result-label">Team Overview</div>
-          <div class="ai-text" id="overview-text"></div>
-          <div class="ai-disc" id="overview-disc"></div>
-        </div>
-      </div>
-
-    </div>
-  </div>
   <!-- SETTINGS -->
   <div id="tab-settings" class="tab-content">
     <div class="page-hd">
@@ -717,6 +641,17 @@
         <div id="url-ok" class="success-msg">URL saved successfully.</div>
       </div>
 
+      <div class="form-card">
+        <h2>Visio Flow Tracker URL</h2>
+        <p class="form-sub">The link shown on each large project card. Paste the SharePoint or OneDrive URL to the Visio flow tracker here.</p>
+        <div class="fg">
+          <label>Visio Flow Tracker URL</label>
+          <input type="text" id="visio-url-input" placeholder="https://wwt-my.sharepoint.com/..."/>
+        </div>
+        <button class="btn-primary" onclick="saveVisioUrl()">Save URL</button>
+        <div id="visio-url-ok" class="success-msg">URL saved successfully.</div>
+      </div>
+
     </div>
   </div>
 
@@ -737,7 +672,8 @@
 <script>
   var allData = null;
   var allLinks = {};
-  var intakeFormUrl = '';
+  var intakeFormUrl = 'https://app.smartsheet.com/sheets/QXrr72P2g3MmMRppHP57W5FhCph3gGCwqH5m9FX1?view=grid';
+  var visioTrackerUrl = 'https://wwt-my.sharepoint.com/:x:/r/personal/huangma_wwt_com/_layouts/15/Doc.aspx?sourcedoc=%7B8df86dd2-a071-4347-ad41-0bfa982c46a1%7D&action=edit&activeCell=%27Visio%20Flows%20Tracker%27!B34&wdinitialsession=d4150620-538c-ec45-cff1-c632ca9b11cb&wdrldsc=4&wdrldc=1&wdrldr=AccessTokenExpiredWarningUnauthenticated%2CRefreshin';
   var bsaTeam = [];
 
   // ── DATA LOAD ──────────────────────────────────────────────────────────────
@@ -755,7 +691,8 @@
       allLinks = await linkRes.json();
       var settings = await settingsRes.json();
       bsaTeam = await bsaRes.json();
-      intakeFormUrl = settings.intake_form_url || '';
+      intakeFormUrl = settings.intake_form_url || intakeFormUrl;
+      visioTrackerUrl = settings.visio_tracker_url || visioTrackerUrl;
     } catch(e) {
       document.getElementById('refresh-time').textContent = 'Error - is server.py running?';
       return;
@@ -764,7 +701,6 @@
     updateStats('manual');
     populateFilters();
     populateBSADropdown();
-    populateAI();
     renderLarge();
     renderEnh();
     renderImpact();
@@ -773,6 +709,8 @@
     renderBSAList();
     var urlInput = document.getElementById('intake-url-input');
     if (urlInput) urlInput.value = intakeFormUrl;
+    var visioInput = document.getElementById('visio-url-input');
+    if (visioInput) visioInput.value = visioTrackerUrl;
   }
 
   async function doRefresh() {
@@ -907,11 +845,11 @@
       footer += '<button class="btn-edit" onclick="event.stopPropagation();editProject(\'' + p.ref_id + '\')">Edit</button>';
       footer += '<button class="btn-del" onclick="event.stopPropagation();deleteProject(\'' + p.ref_id + '\')">Delete</button>';
     }
-    footer += '<button class="btn-ai" onclick="event.stopPropagation();aiFor(\'' + p.ref_id + '\')">AI Update</button>';
+    footer += '<a class="btn-intake" href="' + (visioTrackerUrl || '#') + '" target="_blank" onclick="event.stopPropagation()">Flow Tracker</a>';
     footer += '</div>';
     return '<div class="card" onclick="showDetail(\'' + p.ref_id + '\')" style="cursor:pointer;">'
       + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
-      + '<div class="badge-row">' + riskBadge(p.risk_level) + '<span class="badge b-status">' + p.status + '</span></div></div></div>'
+      + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div></div>'
       + '<div class="card-fields">'
       + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + p.bsa_owner + '</span></div>'
       + '<div class="frow"><span class="flabel">System</span><span class="fval strong">' + (p.system || 'Unknown') + '</span></div>'
@@ -933,7 +871,7 @@
     var sys = sysId && document.getElementById(sysId) ? document.getElementById(sysId).value : '';
     if (q) projects = projects.filter(function(p){ return (p.title + p.bsa_owner + p.system + p.requestor).toLowerCase().includes(q); });
     if (bsa) projects = projects.filter(function(p){ return p.bsa_owner.includes(bsa); });
-    if (risk) projects = projects.filter(function(p){ return p.risk_level === risk; });
+    if (risk) projects = projects.filter(function(p){ return p.priority === risk; });
     if (sys) projects = projects.filter(function(p){ return p.system === sys; });
     return projects;
   }
@@ -994,11 +932,13 @@
     var sys = document.getElementById('f-enh-sys') ? document.getElementById('f-enh-sys').value : '';
     var priority = document.getElementById('f-enh-priority') ? document.getElementById('f-enh-priority').value : '';
     var status = document.getElementById('f-enh-status') ? document.getElementById('f-enh-status').value : '';
-    if (q) p = p.filter(function(x){ return (x.title + x.bsa_owner + x.system + x.requestor).toLowerCase().includes(q); });
+    var initiative = document.getElementById('f-enh-initiative') ? document.getElementById('f-enh-initiative').value : '';
+    if (q) p = p.filter(function(x){ return (x.title + x.bsa_owner + x.system + x.requestor + (x.initiative_name||'')).toLowerCase().includes(q); });
     if (bsa) p = p.filter(function(x){ return x.bsa_owner.includes(bsa); });
     if (sys) p = p.filter(function(x){ return x.system === sys; });
     if (priority) p = p.filter(function(x){ return x.priority === priority; });
     if (status) p = p.filter(function(x){ return x.status === status; });
+    if (initiative) p = p.filter(function(x){ return x.initiative_name === initiative; });
     document.getElementById('c-enh').textContent = p.length + ' enhancements';
     document.getElementById('cards-enh').innerHTML = p.length
       ? p.map(function(x){ return buildEnhCard(x); }).join('')
@@ -1024,8 +964,7 @@
     if (currentImpactCat === 'systems') {
       var sysMap = {};
       manual.forEach(function(p){
-        var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
-        sysList.forEach(function(sys){
+        flatSys(p).forEach(function(sys){
           var c = cleanSys(sys);
           if (!c || c === 'Unknown') return;
           if (!sysMap[c]) sysMap[c] = [];
@@ -1104,6 +1043,17 @@
 
   function cleanSys(s) { return s.replace(/ ?Enhancements?$/i, '').trim(); }
 
+  function flatSys(p) {
+    var raw = Array.isArray(p.systems) && p.systems.length ? p.systems : [p.system || ''];
+    var out = [];
+    raw.forEach(function(s){
+      s.split(',').map(function(x){ return x.trim(); }).filter(Boolean).forEach(function(x){
+        if (!out.includes(x)) out.push(x);
+      });
+    });
+    return out;
+  }
+
   function renderHeatmap() {
     if (!allData) return;
     var manual = allData.projects.filter(function(p){ return p.source === 'manual'; });
@@ -1128,17 +1078,6 @@
         }).join('')
       : '<div style="color:#94a3b8;font-size:13px;padding:10px 0;">No projects submitted yet.</div>';
 
-    function flatSys(p) {
-      var raw = Array.isArray(p.systems) && p.systems.length ? p.systems : [p.system || ''];
-      var out = [];
-      raw.forEach(function(s){
-        s.split(',').map(function(x){ return x.trim(); }).filter(Boolean).forEach(function(x){
-          if (!out.includes(x)) out.push(x);
-        });
-      });
-      return out;
-    }
-
     // Collect systems and BSA columns
     var sysSet = {};
     manual.forEach(function(p){
@@ -1147,23 +1086,7 @@
     var systems = Object.keys(sysSet).sort();
     var bsaCols = bsaList.slice().sort();
 
-    // Grid 1: System x BSA
-    var g1 = {};
-    manual.forEach(function(p){
-      flatSys(p).forEach(function(s){
-        var c = cleanSys(s); if (!c || c === 'Unknown') return;
-        p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
-          if (b && !NON_BSA.includes(b)) { var k = c+'|'+b; g1[k] = (g1[k]||0)+1; }
-        });
-      });
-    });
-    document.getElementById('hm-table').innerHTML = (bsaCols.length && systems.length)
-      ? '<thead><tr><th>System</th>' + bsaCols.map(function(b){ var pts=b.split(' '); return '<th>'+pts[0]+'<br>'+pts.slice(1).join(' ')+'</th>'; }).join('') + '</tr></thead><tbody>'
-        + systems.map(function(sys){ return '<tr><td class="rname">'+sys+'</td>'+bsaCols.map(function(b){ var c=g1[sys+'|'+b]||0; var cl=c>=3?'c3':c===2?'c2':c===1?'c1':'c0'; return '<td class="'+cl+'">'+(c||'--')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'
-      : emptyMsg;
-
-    // Grid 2: System x Project
-    var titles = manual.map(function(p){ return p.title; });
+    // Grid: System x Project
     var g2 = {};
     manual.forEach(function(p){
       flatSys(p).forEach(function(s){
@@ -1171,9 +1094,13 @@
         var k = c+'|'+p.title; g2[k] = (g2[k]||0)+1;
       });
     });
-    document.getElementById('hm-table-2').innerHTML = (titles.length && systems.length)
-      ? '<thead><tr><th>System</th>' + titles.map(function(t){ var w=t.split(' '); var m=Math.ceil(w.length/2); return '<th>'+w.slice(0,m).join(' ')+'<br>'+w.slice(m).join(' ')+'</th>'; }).join('') + '</tr></thead><tbody>'
-        + systems.map(function(sys){ return '<tr><td class="rname">'+sys+'</td>'+titles.map(function(t){ var c=g2[sys+'|'+t]||0; var cl=c>=3?'c3':c===2?'c2':c===1?'c1':'c0'; return '<td class="'+cl+'">'+(c||'--')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'
+    document.getElementById('hm-table-2').innerHTML = (manual.length && systems.length)
+      ? '<thead><tr><th>System</th>' + manual.map(function(p){
+          var w = p.title.split(' '); var m = Math.ceil(w.length/2);
+          return '<th style="cursor:pointer;text-decoration:underline;" onclick="showDetail(\'' + p.ref_id + '\')">'
+            + w.slice(0,m).join(' ') + '<br>' + w.slice(m).join(' ') + '</th>';
+        }).join('') + '</tr></thead><tbody>'
+        + systems.map(function(sys){ return '<tr><td class="rname">'+sys+'</td>'+manual.map(function(p){ var c=g2[sys+'|'+p.title]||0; var cl=c>=3?'c3':c===2?'c2':c===1?'c1':'c0'; return '<td class="'+cl+'">'+(c||'--')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'
       : emptyMsg;
   }
 
@@ -1194,6 +1121,13 @@
     });
     var sysEl = document.getElementById('f-enh-sys');
     if (sysEl) sysEl.innerHTML = '<option value="">All Systems</option>' + systems.map(function(s){ return '<option>' + s + '</option>'; }).join('');
+    var initiatives = [];
+    allData.projects.forEach(function(p){
+      if (p.source === 'smartsheet' && p.initiative_name && p.initiative_name !== '' && p.initiative_name !== 'nan' && !initiatives.includes(p.initiative_name)) initiatives.push(p.initiative_name);
+    });
+    initiatives.sort();
+    var initEl = document.getElementById('f-enh-initiative');
+    if (initEl) initEl.innerHTML = '<option value="">All Initiatives</option>' + initiatives.map(function(i){ return '<option>' + i + '</option>'; }).join('');
     var stEl = document.getElementById('f-large-status');
     if (stEl) stEl.innerHTML = '<option value="">All Statuses</option>' + statuses.map(function(s){ return '<option>' + s + '</option>'; }).join('');
   }
@@ -1256,6 +1190,24 @@
     } catch(e) { alert('Could not connect to server.'); }
   }
 
+  async function saveVisioUrl() {
+    var url = document.getElementById('visio-url-input').value.trim();
+    try {
+      var res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ visio_tracker_url: url })
+      });
+      var data = await res.json();
+      if (data.success) {
+        visioTrackerUrl = url;
+        var ok = document.getElementById('visio-url-ok');
+        ok.style.display = 'block';
+        setTimeout(function(){ ok.style.display = 'none'; }, 3000);
+      }
+    } catch(e) { alert('Could not connect to server.'); }
+  }
+
   async function saveIntakeUrl() {
     var url = document.getElementById('intake-url-input').value.trim();
     try {
@@ -1274,14 +1226,6 @@
     } catch(e) { alert('Could not connect to server.'); }
   }
 
-  function populateAI() {
-    var opts = '<option value="">Choose a project...</option>'
-      + allData.projects.map(function(p){
-          return '<option value="' + p.ref_id + '">[' + (p.source === 'manual' ? 'M' : 'SS') + '] ' + p.title + ' - ' + p.bsa_owner + '</option>';
-        }).join('');
-    document.getElementById('ai-proj').innerHTML = opts;
-    document.getElementById('draft-proj').innerHTML = opts;
-  }
 
   // ── CRUD ──────────────────────────────────────────────────────────────────
 
@@ -1332,7 +1276,7 @@
         clearForm();
         loadData();
       } else { alert('Error saving. Try again.'); }
-    } catch(e) { alert('Cannot connect to server. Is server.py running?'); }
+    } catch(e) { alert('Error: ' + e.message + '\n\nCannot connect to server. Is server.py running?'); }
   }
 
   function clearForm() {
@@ -1532,41 +1476,34 @@
       return o.ref_id !== p.ref_id && o.system && o.system !== 'Unknown' && o.system === p.system;
     });
 
+    var isManual = p.source === 'manual';
     var html = '<div class="panel-title">' + (p.title || 'Untitled') + '</div>'
       + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">'
-      + riskBadge(p.risk_level) + ' ' + sourceBadge(p.source)
       + '<span class="badge b-status">' + p.status + '</span></div>';
 
+    var allSystems = (Array.isArray(p.systems) && p.systems.length)
+      ? p.systems.join(', ')
+      : (p.system || '--');
+
     html += '<div class="panel-fields">'
-      + '<div class="panel-field"><span class="panel-flabel">BSA Owner</span><span class="panel-fval" style="font-weight:700;">' + p.bsa_owner + '</span></div>'
-      + '<div class="panel-field"><span class="panel-flabel">System</span><span class="panel-fval" style="font-weight:700;">' + (p.system || '--') + '</span></div>'
+      + '<div class="panel-field"><span class="panel-flabel">BSA Owner</span><span class="panel-fval" style="font-weight:700;">' + (p.bsa_owner || '--') + '</span></div>'
+      + (isManual && p.co_owner ? '<div class="panel-field"><span class="panel-flabel">Co-Owner</span><span class="panel-fval" style="font-weight:700;">' + p.co_owner + '</span></div>' : '')
+      + '<div class="panel-field"><span class="panel-flabel">Systems</span><span class="panel-fval" style="font-weight:700;">' + allSystems + '</span></div>'
       + '<div class="panel-field"><span class="panel-flabel">Stakeholder</span><span class="panel-fval">' + (p.requestor || '--') + '</span></div>'
       + '<div class="panel-field"><span class="panel-flabel">Priority</span><span class="panel-fval">' + (p.priority || '--') + '</span></div>'
-      + '<div class="panel-field"><span class="panel-flabel">Overlap Score</span><span class="panel-fval">' + (p.overlap_score || 0) + ' / 4</span></div>'
+      + (isManual && p.start_date ? '<div class="panel-field"><span class="panel-flabel">Start Date</span><span class="panel-fval">' + p.start_date + '</span></div>' : '')
+      + (isManual && p.end_date ? '<div class="panel-field"><span class="panel-flabel">End Date</span><span class="panel-fval">' + p.end_date + '</span></div>' : '')
       + '</div>';
 
     if (p.notes) {
       html += '<div class="panel-section-title" style="color:#374151;">Notes</div>'
         + '<div style="font-size:13px;color:#374151;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:4px;">' + p.notes + '</div>';
     }
-
-    if (p.flags && p.flags.length > 0) {
-      html += '<div class="panel-section-title flags">Overlap Flags</div>'
-        + p.flags.map(function(f){ return '<div class="panel-flag">' + f + '</div>'; }).join('');
+    if (isManual && p.known_overlaps) {
+      html += '<div class="panel-section-title" style="color:#374151;">Known Overlaps</div>'
+        + '<div style="font-size:13px;color:#374151;background:#f8fafc;padding:12px;border-radius:6px;margin-bottom:4px;">' + p.known_overlaps + '</div>';
     }
 
-    if (similar.length > 0) {
-      html += '<div class="panel-section-title similar">Similar Projects - Same System (' + similar.length + ')</div>'
-        + similar.slice(0, 8).map(function(o){
-            return '<div class="panel-similar-item">'
-              + '<div class="panel-similar-name">' + o.title + '</div>'
-              + '<div class="panel-similar-meta">' + o.bsa_owner + ' &nbsp;|&nbsp; ' + o.status + ' &nbsp;|&nbsp; ' + o.risk_level + '</div>'
-              + '</div>';
-          }).join('');
-    } else {
-      html += '<div class="panel-section-title similar">Similar Projects</div>'
-        + '<div style="font-size:13px;color:#94a3b8;padding:8px 0;">No other projects touch ' + (p.system || 'this system') + ' right now.</div>';
-    }
 
     document.getElementById('panel-body').innerHTML = html;
     document.getElementById('panel-overlay').style.display = 'block';

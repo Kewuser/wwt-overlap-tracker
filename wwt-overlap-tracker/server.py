@@ -7,9 +7,6 @@ from zoneinfo import ZoneInfo
 
 CENTRAL = ZoneInfo("America/Chicago")
 from flask import Flask, jsonify, request, send_from_directory
-from groq import Groq
-
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 MANUAL_PROJECTS_FILE = "manual_projects.json"
 LINKS_FILE = "project_links.json"
@@ -24,7 +21,6 @@ DEFAULT_BSA_TEAM = [
 ]
 
 app = Flask(__name__)
-groq_client = Groq(api_key=GROQ_API_KEY)
 
 _cache = {"data": None}
 _cache_lock = threading.Lock()
@@ -354,151 +350,6 @@ def remove_link(enhancement_ref_id):
     return jsonify({"success": True})
 
 
-@app.route("/api/team-overview", methods=["POST"])
-def team_overview():
-    data = request.get_json()
-    projects = data.get("projects", [])
-    high_touch = [p for p in projects if p.get("risk_level") == "High Touch"]
-
-    if not high_touch:
-        return jsonify({"success": True, "summary": "No High Touch projects found. The team looks well-balanced right now."})
-
-    project_lines = "\n".join([
-        f"- {p['title']} | BSA: {p['bsa_owner']} | System: {p.get('system','?')} | Status: {p.get('status','?')} | Flags: {', '.join(p.get('flags', [])) or 'None'}"
-        for p in high_touch[:20]
-    ])
-
-    prompt = f"""You are a BSA team coordinator at World Wide Technology (WWT).
-You are reviewing the team's highest-risk active projects to prepare for a Monday team meeting.
-
-Here are the {len(high_touch)} High Touch projects:
-
-{project_lines}
-
-Write a concise team overview (under 200 words) that:
-1. Identifies the BSAs with the heaviest workload
-2. Highlights any systems where multiple BSAs are working simultaneously
-3. Flags 2-3 specific coordination risks the team should discuss
-4. Ends with one concrete recommendation for the team
-
-Be direct and practical. This is for an internal team meeting."""
-
-    try:
-        response = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=350,
-            temperature=0.3,
-        )
-        return jsonify({
-            "success": True,
-            "summary": response.choices[0].message.content.strip(),
-            "high_touch_count": len(high_touch),
-            "disclaimer": "AI summary only - review with your team before acting on any recommendations."
-        })
-    except Exception as e:
-        return jsonify({"error": f"AI error: {str(e)}"}), 500
-
-
-@app.route("/api/draft-update", methods=["POST"])
-def draft_update():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    project = data.get("project", {})
-    context = data.get("context", "")
-
-    project_context = f"""
-Project: {project.get('title', 'Unknown')}
-BSA Owner: {project.get('bsa_owner', 'Unknown')}
-Status: {project.get('status', 'Unknown')}
-System: {project.get('system', 'Unknown')}
-Priority: {project.get('priority', 'Unknown')}
-Stakeholder: {project.get('requestor', 'Unknown')}
-Notes: {project.get('notes', 'None')}
-Overlap Flags: {', '.join(project.get('flags', [])) or 'None'}
-""".strip()
-
-    prompt = f"""You are a BSA at World Wide Technology (WWT) drafting a status update for a stakeholder.
-
-Project details:
-{project_context}
-
-Additional context from the BSA:
-{context or 'None provided'}
-
-Write a professional, concise status update email or Teams message (under 120 words) that:
-1. States the current status clearly
-2. Mentions next steps or timeline
-3. Flags any blockers or dependencies if relevant
-4. Is written in first person from the BSA's perspective
-
-Keep it friendly but professional. No jargon. This will be sent to the project stakeholder."""
-
-    try:
-        response = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=250,
-            temperature=0.4,
-        )
-        return jsonify({
-            "success": True,
-            "draft": response.choices[0].message.content.strip(),
-            "disclaimer": "Review and edit before sending. AI draft only - you know your stakeholder best."
-        })
-    except Exception as e:
-        return jsonify({"error": f"AI error: {str(e)}"}), 500
-
-
-@app.route("/api/analyze", methods=["POST"])
-def analyze_project():
-    data = request.get_json()
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    project = data.get("project", {})
-    question = data.get("question", "What update do you suggest for this project?")
-
-    project_context = f"""
-Project: {project.get('title', 'Unknown')}
-Ref ID: {project.get('ref_id', 'Unknown')}
-BSA Owner: {project.get('bsa_owner', 'Unknown')}
-Status: {project.get('status', 'Unknown')}
-System: {project.get('system', 'Unknown')}
-Priority: {project.get('priority', 'Unknown')}
-Risk Level: {project.get('risk_level', 'Unknown')}
-Overlap Flags: {', '.join(project.get('flags', [])) or 'None'}
-Notes: {project.get('notes', 'None')}
-""".strip()
-
-    prompt = f"""You are a BSA assistant at World Wide Technology (WWT).
-
-Project:
-{project_context}
-
-BSA's notes:
-{question}
-
-Provide a concise, practical suggestion for how to update or handle this project.
-Keep your response under 150 words. Be direct and actionable.
-Remember: you are only suggesting - the BSA makes the final decision."""
-
-    try:
-        response = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=200,
-            temperature=0.3,
-        )
-        return jsonify({
-            "success": True,
-            "suggestion": response.choices[0].message.content.strip(),
-            "disclaimer": "AI suggestion only - BSA makes the final decision. Do not use this to directly update Smartsheet."
-        })
-    except Exception as e:
-        return jsonify({"error": f"AI error: {str(e)}"}), 500
 
 
 if __name__ == "__main__":
