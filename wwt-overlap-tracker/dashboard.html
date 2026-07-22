@@ -908,7 +908,7 @@
       footer += '<button class="btn-del" onclick="event.stopPropagation();deleteProject(\'' + p.ref_id + '\')">Delete</button>';
     }
     footer += '<button class="btn-ai" onclick="event.stopPropagation();aiFor(\'' + p.ref_id + '\')">AI Update</button>';
-    footer += '<span class="source-pill">' + sourceBadge(p.source) + '</span></div>';
+    footer += '</div>';
     return '<div class="card" onclick="showDetail(\'' + p.ref_id + '\')" style="cursor:pointer;">'
       + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
       + '<div class="badge-row">' + riskBadge(p.risk_level) + '<span class="badge b-status">' + p.status + '</span></div></div></div>'
@@ -1128,11 +1128,21 @@
         }).join('')
       : '<div style="color:#94a3b8;font-size:13px;padding:10px 0;">No projects submitted yet.</div>';
 
+    function flatSys(p) {
+      var raw = Array.isArray(p.systems) && p.systems.length ? p.systems : [p.system || ''];
+      var out = [];
+      raw.forEach(function(s){
+        s.split(',').map(function(x){ return x.trim(); }).filter(Boolean).forEach(function(x){
+          if (!out.includes(x)) out.push(x);
+        });
+      });
+      return out;
+    }
+
     // Collect systems and BSA columns
     var sysSet = {};
     manual.forEach(function(p){
-      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
-      sysList.forEach(function(s){ var c = cleanSys(s); if (c && c !== 'Unknown') sysSet[c] = true; });
+      flatSys(p).forEach(function(s){ var c = cleanSys(s); if (c && c !== 'Unknown') sysSet[c] = true; });
     });
     var systems = Object.keys(sysSet).sort();
     var bsaCols = bsaList.slice().sort();
@@ -1140,8 +1150,7 @@
     // Grid 1: System x BSA
     var g1 = {};
     manual.forEach(function(p){
-      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
-      sysList.forEach(function(s){
+      flatSys(p).forEach(function(s){
         var c = cleanSys(s); if (!c || c === 'Unknown') return;
         p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
           if (b && !NON_BSA.includes(b)) { var k = c+'|'+b; g1[k] = (g1[k]||0)+1; }
@@ -1157,8 +1166,7 @@
     var titles = manual.map(function(p){ return p.title; });
     var g2 = {};
     manual.forEach(function(p){
-      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
-      sysList.forEach(function(s){
+      flatSys(p).forEach(function(s){
         var c = cleanSys(s); if (!c || c === 'Unknown') return;
         var k = c+'|'+p.title; g2[k] = (g2[k]||0)+1;
       });

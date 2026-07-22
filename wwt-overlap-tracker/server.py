@@ -14,7 +14,14 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 MANUAL_PROJECTS_FILE = "manual_projects.json"
 LINKS_FILE = "project_links.json"
 DASHBOARD_FILE = "dashboard.html"
+BSA_TEAM_FILE = "bsa_team.json"
+SETTINGS_FILE = "settings.json"
 REFRESH_HOURS = {8, 12, 17}
+
+DEFAULT_BSA_TEAM = [
+    "Angela Rhodes", "Dan Temperly", "Dustin Hartrick", "Ellen Clegg",
+    "Jennifer Bednar", "Jennifer Cummings", "Jordan Butler", "Tori Yardley", "Zack Godat"
+]
 
 app = Flask(__name__)
 groq_client = Groq(api_key=GROQ_API_KEY)
@@ -55,9 +62,35 @@ def save_links(links):
         json.dump(links, f, indent=2)
 
 
+def load_bsa_team():
+    if not os.path.exists(BSA_TEAM_FILE):
+        return DEFAULT_BSA_TEAM.copy()
+    with open(BSA_TEAM_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_bsa_team(team):
+    with open(BSA_TEAM_FILE, "w") as f:
+        json.dump(sorted(team), f, indent=2)
+
+
+def load_settings():
+    if not os.path.exists(SETTINGS_FILE):
+        return {"intake_form_url": ""}
+    with open(SETTINGS_FILE, "r") as f:
+        return json.load(f)
+
+
+def save_settings_data(data):
+    with open(SETTINGS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 def build_full_dataset():
     from api_integration import load_data_from_smartsheet
+    import overlap_detector
     from overlap_detector import get_active, detect_overlaps, build_output
+    overlap_detector.BSA_TEAM = set(load_bsa_team())
 
     df = load_data_from_smartsheet()
     active = get_active(df)
@@ -102,15 +135,15 @@ def build_full_dataset():
 
 def refresh_cache():
     global _cache
-    print(f"[{datetime.now().strftime('%I:%M %p')}] Refreshing data from Smartsheet...")
+    print(f"[{datetime.now(CENTRAL).strftime('%I:%M %p')}] Refreshing data from Smartsheet...")
     try:
         data = build_full_dataset()
         with _cache_lock:
             _cache["data"] = data
-        print(f"[{datetime.now().strftime('%I:%M %p')}] Refresh complete. {data['summary']['total_active']} active projects.")
+        print(f"[{datetime.now(CENTRAL).strftime('%I:%M %p')}] Refresh complete. {data['summary']['total_active']} active projects.")
         return data
     except Exception as e:
-        print(f"[{datetime.now().strftime('%I:%M %p')}] Refresh failed: {e}. Serving last known data.")
+        print(f"[{datetime.now(CENTRAL).strftime('%I:%M %p')}] Refresh failed: {e}. Serving last known data.")
         return None
 
 
@@ -120,7 +153,7 @@ def start_scheduler():
     def scheduler_loop():
         nonlocal fired_today
         while True:
-            now = datetime.now()
+            now = datetime.now(CENTRAL)
             today = now.date()
             fired_today = {h for h in fired_today if h[0] == today}
             key = (today, now.hour)
@@ -196,7 +229,7 @@ def add_manual_project():
         "flags": [],
         "risk_level": "Low Touch",
         "source": "manual",
-        "added_at": datetime.now().isoformat(),
+        "added_at": datetime.now(CENTRAL).isoformat(),
     }
 
     projects.append(new_project)
@@ -228,7 +261,7 @@ def edit_manual_project(ref_id):
                 "start_date": data.get("start_date", p.get("start_date", "")),
                 "end_date": data.get("end_date", p.get("end_date", "")),
                 "known_overlaps": data.get("known_overlaps", p.get("known_overlaps", "")),
-                "updated_at": datetime.now().isoformat(),
+                "updated_at": datetime.now(CENTRAL).isoformat(),
             })
             save_manual_projects(projects)
             with _cache_lock:
@@ -264,6 +297,50 @@ def add_link():
     links = load_links()
     links[data["enhancement_ref_id"]] = data["large_project_ref_id"]
     save_links(links)
+    return jsonify({"success": True})
+
+
+@app.route("/api/bsa-team", methods=["GET"])
+def get_bsa_team():
+    return jsonify(load_bsa_team())
+
+
+@app.route("/api/bsa-team", methods=["POST"])
+def add_bsa_member():
+    data = request.get_json()
+    name = data.get("name", "").strip() if data else ""
+    if not name:
+        return jsonify({"error": "Name required"}), 400
+    team = load_bsa_team()
+    if name not in team:
+        team.append(name)
+        save_bsa_team(team)
+    return jsonify({"success": True, "team": sorted(team)})
+
+
+@app.route("/api/bsa-team/<name>", methods=["DELETE"])
+def remove_bsa_member(name):
+    team = load_bsa_team()
+    if name not in team:
+        return jsonify({"error": "Not found"}), 404
+    team = [m for m in team if m != name]
+    save_bsa_team(team)
+    return jsonify({"success": True, "team": team})
+
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    return jsonify(load_settings())
+
+
+@app.route("/api/settings", methods=["POST"])
+def update_settings():
+    data = request.get_json()
+    if not data:
+        return jsonify({"error": "No data"}), 400
+    settings = load_settings()
+    settings.update(data)
+    save_settings_data(settings)
     return jsonify({"success": True})
 
 
