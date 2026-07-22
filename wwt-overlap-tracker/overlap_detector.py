@@ -13,11 +13,12 @@ BSA_TEAM = {
     "Jordan Butler",
     "Zack Godat",
     "Jennifer Bednar",
-    "Dustin Hartick",
+    "Dustin Hartrick",
     "Ellen Clegg",
     "Jennifer Cummings",
     "Angela Rhodes",
     "Tori Yardley",
+    "Dan Temperly",
 }
 
 HIGH_RISK_SYSTEMS = {
@@ -152,6 +153,7 @@ def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, c
         projects.append({
             "ref_id": ref,
             "title": (row["request_title"] or row["initiative_name"] or "Untitled")[:80],
+            "initiative_name": row.get("initiative_name", ""),
             "bsa_owner": bsa_display,
             "requestor": row["requestor"],
             "system": row["system"],
@@ -160,6 +162,7 @@ def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, c
             "program": row["program"],
             "request_type": row["request_type"],
             "request_date": row.get("request_date", "") if pd.notna(row.get("request_date", "")) else "",
+            "notes": row.get("notes", "") if pd.notna(row.get("notes", "")) else "",
             "overlap_score": flag_data["overlap_score"],
             "risk_level": flag_data["risk_level"],
             "flags": flag_data["flags"],

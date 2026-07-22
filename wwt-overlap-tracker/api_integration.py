@@ -39,6 +39,7 @@ def get_smartsheet_data(token=SMARTSHEET_TOKEN, sheet_id=SMARTSHEET_SHEET_ID):
         "Request Date": "request_date",
         "Business Priority": "priority",
         "Program": "program",
+        "Notes": "notes",
     }
     df = df.rename(columns=column_renames)
 
@@ -59,6 +60,7 @@ def load_data_from_smartsheet():
     df["priority"] = df.get("priority", pd.Series()).fillna("Unknown").astype(str).str.strip()
     df["program"] = df.get("program", pd.Series()).fillna("Unknown").astype(str).str.strip()
     df["request_date"] = df.get("request_date", pd.Series()).fillna("").astype(str).str.strip()
+    df["notes"] = df.get("notes", pd.Series()).fillna("").astype(str).str.strip()
 
     return df
 

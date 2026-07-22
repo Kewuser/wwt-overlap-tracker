@@ -179,6 +179,11 @@
     .btn-ai:hover { background: #7c3aed; color: white; }
     .btn-intake { padding: 5px 13px; border-radius: 6px; border: 1px solid #0066cc; background: white; color: #0066cc; cursor: pointer; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-block; }
     .btn-intake:hover { background: #0066cc; color: white; }
+    .enh-grid { display: grid; grid-template-columns: 1fr 1fr; }
+    .enh-grid .frow { border-bottom: 1px solid #f8fafc; }
+    .enh-notes { padding: 10px 18px 12px; border-top: 1px solid #f1f5f9; }
+    .enh-notes-label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+    .enh-notes-text { font-size: 13px; color: #374151; line-height: 1.5; }
     .source-pill { margin-left: auto; }
 
     /* IMPACT */
@@ -311,6 +316,11 @@
     .panel-similar-item { font-size: 12px; padding: 8px 10px; background: #f0f9ff; border-left: 3px solid #7dd3fc; border-radius: 0 6px 6px 0; margin-bottom: 4px; }
     .panel-similar-name { font-weight: 600; color: #1e293b; }
     .panel-similar-meta { color: #64748b; margin-top: 2px; }
+
+    .impact-filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+    .impact-cat-btn { padding: 8px 18px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
+    .impact-cat-btn:hover { border-color: #003087; color: #003087; }
+    .impact-cat-btn.active { background: #003087; color: white; border-color: #003087; }
   </style>
 </head>
 <body>
@@ -346,7 +356,7 @@
   <div class="nav-section">
     <div class="nav-label">Analysis</div>
     <div class="nav-item" id="nav-impact" onclick="switchTab('impact', this)">
-      <span class="nav-icon">&#128279;</span> Project Impact
+      <span class="nav-icon">&#128279;</span> Project Overlaps
     </div>
     <div class="nav-item" id="nav-heatmap" onclick="switchTab('heatmap', this)">
       <span class="nav-icon">&#128202;</span> Heatmap
@@ -367,22 +377,22 @@
 <div class="main">
 
   <!-- STATS STRIP -->
-  <div class="stats-strip">
+  <div class="stats-strip" id="stats-strip">
     <div class="stat-card">
       <div class="stat-dot navy"></div>
-      <div><div class="stat-value" id="s-total">-</div><div class="stat-lbl">Total Active</div></div>
+      <div><div class="stat-value" id="s-total">-</div><div class="stat-lbl" id="lbl-total">Total Active</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-dot red"></div>
-      <div><div class="stat-value" id="s-high">-</div><div class="stat-lbl">High Touch</div></div>
+      <div><div class="stat-value" id="s-high">-</div><div class="stat-lbl" id="lbl-high">High Touch</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-dot orange"></div>
-      <div><div class="stat-value" id="s-med">-</div><div class="stat-lbl">Medium</div></div>
+      <div><div class="stat-value" id="s-med">-</div><div class="stat-lbl" id="lbl-med">Medium</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-dot green"></div>
-      <div><div class="stat-value" id="s-low">-</div><div class="stat-lbl">Low Touch</div></div>
+      <div><div class="stat-value" id="s-low">-</div><div class="stat-lbl" id="lbl-low">Low Touch</div></div>
     </div>
     <div class="stat-card">
       <div class="stat-dot purple"></div>
@@ -445,30 +455,37 @@
   <div id="tab-impact" class="tab-content">
     <div class="page-hd">
       <div>
-        <div class="page-title">Project Impact</div>
-        <div class="page-sub">Projects are linked when they share a BSA owner, the same system, or when an enhancement has been linked to a large project.</div>
+        <div class="page-title">Project Overlaps</div>
+        <div class="page-sub">Overlap analysis based on manually submitted projects. Select a category to explore.</div>
       </div>
+    </div>
+    <div class="impact-filter-bar">
+      <button class="impact-cat-btn active" onclick="setImpactCat('systems', this)">Systems with 2+ Projects</button>
+      <button class="impact-cat-btn" onclick="setImpactCat('requestor', this)">Requestor with Multiple BSAs</button>
+      <button class="impact-cat-btn" onclick="setImpactCat('overloaded', this)">BSAs with 2+ Active Projects</button>
+      <button class="impact-cat-btn" onclick="setImpactCat('coowned', this)">Co-Owned Projects</button>
     </div>
     <div id="cards-impact"></div>
   </div>
 
   <!-- HEATMAP -->
   <div id="tab-heatmap" class="tab-content">
-    <div class="page-hd">
-      <div><div class="page-title">Overlap Heatmap</div></div>
-    </div>
     <div class="legend">
       <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div><span>3 or more projects</span></div>
       <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div><span>2 projects</span></div>
       <div class="legend-item"><div class="legend-dot" style="background:#1d4ed8"></div><span>1 project</span></div>
     </div>
     <div class="wl-card">
-      <div class="wl-card-title">BSA Workload (enhancements from Smartsheet; add large projects manually)</div>
+      <div class="wl-card-title">BSA Workload by Team Members</div>
       <div id="wl-bars"></div>
     </div>
-    <div class="hm-wrap">
+    <div class="hm-wrap" style="margin-bottom:20px;">
       <div class="hm-title">System x BSA Grid</div>
       <table class="hm-table" id="hm-table"></table>
+    </div>
+    <div class="hm-wrap">
+      <div class="hm-title">System x Project Grid</div>
+      <table class="hm-table" id="hm-table-2"></table>
     </div>
   </div>
 
@@ -496,10 +513,11 @@
             <label>BSA Owner *</label>
             <select id="fp-bsa">
               <option value="">Select BSA...</option>
-              <option>Jordan Butler</option><option>Zack Godat</option>
-              <option>Jennifer Bednar</option><option>Dustin Hartrick</option>
-              <option>Ellen Clegg</option><option>Jennifer Cummings</option>
-              <option>Angela Rhodes</option><option>Tori Yardley</option>
+              <option>Angela Rhodes</option><option>Dan Temperly</option>
+              <option>Dustin Hartrick</option><option>Ellen Clegg</option>
+              <option>Jennifer Bednar</option><option>Jennifer Cummings</option>
+              <option>Jordan Butler</option><option>Tori Yardley</option>
+              <option>Zack Godat</option>
             </select>
           </div>
           <div class="fg">
@@ -519,7 +537,7 @@
               <input type="radio" name="fp-coown" value="No" checked onchange="document.getElementById('fp-coown-name').style.display='none'"> No
             </label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;">
-              <input type="radio" name="fp-coown" value="Yes" onchange="document.getElementById('fp-coown-name').style.display='block'"> Yes — list their name below
+              <input type="radio" name="fp-coown" value="Yes" onchange="document.getElementById('fp-coown-name').style.display='block'"> Yes, list their name below
             </label>
           </div>
           <input type="text" id="fp-coown-name" placeholder="Co-owner's name(s)..." style="display:none;margin-top:8px;width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;color:#1e293b;background:#f8fafc;"/>
@@ -697,7 +715,7 @@
       return;
     }
     document.getElementById('refresh-time').textContent = allData.last_refreshed || 'just now';
-    updateStats();
+    updateStats('manual');
     populateFilters();
     populateAI();
     renderLarge();
@@ -727,14 +745,36 @@
     btn.disabled = false;
   }
 
-  function updateStats() {
-    var s = allData.summary;
-    document.getElementById('s-total').textContent = s.total_active;
-    document.getElementById('s-high').textContent = s.high_touch_count;
-    document.getElementById('s-med').textContent = s.medium_count;
-    document.getElementById('s-low').textContent = s.low_touch_count;
-    document.getElementById('s-coown').textContent = s.co_owned_count;
-    document.getElementById('s-bsas').textContent = s.total_bsas;
+  function updateStats(source) {
+    if (!allData) return;
+    var projects = allData.projects.filter(function(p){ return p.source === source; });
+    var bsas = new Set();
+    projects.forEach(function(p){ p.bsa_owner.split(',').forEach(function(b){ if (b.trim()) bsas.add(b.trim()); }); });
+    var coOwned = source === 'manual'
+      ? projects.filter(function(p){ return p.co_owner && p.co_owner !== ''; }).length
+      : projects.filter(function(p){ return p.bsa_owner && p.bsa_owner.includes(','); }).length;
+
+    if (source === 'smartsheet') {
+      document.getElementById('lbl-total').textContent = 'Total Enhancements';
+      document.getElementById('lbl-high').textContent = 'High Priority';
+      document.getElementById('lbl-med').textContent = 'Medium Priority';
+      document.getElementById('lbl-low').textContent = 'Low Priority';
+      document.getElementById('s-total').textContent = projects.length;
+      document.getElementById('s-high').textContent = projects.filter(function(p){ return p.priority === 'High'; }).length;
+      document.getElementById('s-med').textContent = projects.filter(function(p){ return p.priority === 'Medium'; }).length;
+      document.getElementById('s-low').textContent = projects.filter(function(p){ return p.priority === 'Low'; }).length;
+    } else {
+      document.getElementById('lbl-total').textContent = 'Total Active';
+      document.getElementById('lbl-high').textContent = 'High Touch';
+      document.getElementById('lbl-med').textContent = 'Medium';
+      document.getElementById('lbl-low').textContent = 'Low Touch';
+      document.getElementById('s-total').textContent = projects.length;
+      document.getElementById('s-high').textContent = projects.filter(function(p){ return p.risk_level === 'High Touch'; }).length;
+      document.getElementById('s-med').textContent = projects.filter(function(p){ return p.risk_level === 'Medium'; }).length;
+      document.getElementById('s-low').textContent = projects.filter(function(p){ return p.risk_level === 'Low Touch'; }).length;
+    }
+    document.getElementById('s-coown').textContent = coOwned;
+    document.getElementById('s-bsas').textContent = bsas.size;
   }
 
   function updateNavBadges() {
@@ -751,6 +791,16 @@
     document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
     document.getElementById('tab-' + name).classList.add('active');
     el.classList.add('active');
+    var strip = document.getElementById('stats-strip');
+    if (name === 'large') {
+      strip.style.display = '';
+      updateStats('manual');
+    } else if (name === 'enhancements') {
+      strip.style.display = '';
+      updateStats('smartsheet');
+    } else {
+      strip.style.display = 'none';
+    }
   }
 
   // ── BADGE HELPERS ──────────────────────────────────────────────────────────
@@ -853,22 +903,32 @@
   }
 
   function buildEnhCard(p) {
-    var dateStr = p.request_date && p.request_date !== 'nan' && p.request_date !== '' ? p.request_date : '';
+    var clean = function(v) { return (!v || v === 'nan' || v === 'Unknown') ? '--' : v; };
+    var notesHtml = p.notes && p.notes !== '' && p.notes !== 'nan'
+      ? '<div class="enh-notes"><div class="enh-notes-label">Notes</div><div class="enh-notes-text">' + p.notes + '</div></div>'
+      : '';
+    var initiativeHtml = p.initiative_name && p.initiative_name !== '' && p.initiative_name !== 'nan' && p.initiative_name !== p.title
+      ? '<div class="frow"><span class="flabel">Initiative Name</span><span class="fval">' + p.initiative_name + '</span></div>'
+      : '';
     return '<div class="card">'
-      + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
-      + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div></div>'
-      + '<div class="card-fields">'
-      + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + p.bsa_owner + '</span></div>'
-      + '<div class="frow"><span class="flabel">System</span><span class="fval strong">' + (p.system || 'Unknown') + '</span></div>'
-      + '<div class="frow"><span class="flabel">Requestor</span><span class="fval">' + (p.requestor || '--') + '</span></div>'
-      + '<div class="frow"><span class="flabel">Priority</span><span class="fval">' + (p.priority || '--') + '</span></div>'
-      + '<div class="frow"><span class="flabel">Program</span><span class="fval">' + (p.program || '--') + '</span></div>'
-      + '<div class="frow"><span class="flabel">Type</span><span class="fval">' + (p.request_type || '--') + '</span></div>'
-      + (dateStr ? '<div class="frow"><span class="flabel">Date</span><span class="fval">' + dateStr + '</span></div>' : '')
+      + '<div class="card-header">'
+      + '<div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
+      + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div>'
+      + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">Ref ID: ' + clean(p.ref_id) + '</div>'
       + '</div>'
+      + '<div class="card-fields"><div class="enh-grid">'
+      + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + clean(p.bsa_owner) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Business Priority</span><span class="fval">' + clean(p.priority) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Primary System</span><span class="fval strong">' + clean(p.system) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Request Type</span><span class="fval">' + clean(p.request_type) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Requestor Name</span><span class="fval">' + clean(p.requestor) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Request Date</span><span class="fval">' + clean(p.request_date) + '</span></div>'
+      + '<div class="frow"><span class="flabel">Program</span><span class="fval">' + clean(p.program) + '</span></div>'
+      + (initiativeHtml ? initiativeHtml : '<div class="frow"><span class="flabel">Initiative Name</span><span class="fval">--</span></div>')
+      + '</div></div>'
+      + notesHtml
       + '<div class="card-footer">'
       + '<a class="btn-intake" href="https://app.smartsheet.com/sheets/QXrr72P2g3MmMRppHP57W5FhCph3gGCwqH5m9FX1?view=grid" target="_blank">Strategic Initiatives & Operations Intake Form</a>'
-      + '<span class="source-pill"><span class="badge b-smart">Smartsheet</span></span>'
       + '</div>'
       + '</div>';
   }
@@ -893,93 +953,167 @@
   }
 
 
+  var currentImpactCat = 'systems';
+
+  function setImpactCat(cat, el) {
+    currentImpactCat = cat;
+    document.querySelectorAll('.impact-cat-btn').forEach(function(b){ b.classList.remove('active'); });
+    el.classList.add('active');
+    renderImpact();
+  }
+
   function renderImpact() {
     if (!allData) return;
-    var projects = allData.projects;
+    var manual = allData.projects.filter(function(p){ return p.source === 'manual'; });
     var html = '';
-    projects.forEach(function(p) {
-      var sharedBSA = projects.filter(function(o){
-        if (o.ref_id === p.ref_id) return false;
-        return o.bsa_owner.split(',').map(function(b){ return b.trim(); }).some(function(b){ return p.bsa_owner.includes(b); });
+    var emptyMsg = '<div class="empty"><h3>No overlaps found in this category yet</h3><p>Add more projects via the Add Project tab to see overlaps here.</p></div>';
+
+    if (currentImpactCat === 'systems') {
+      var sysMap = {};
+      manual.forEach(function(p){
+        var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
+        sysList.forEach(function(sys){
+          var c = cleanSys(sys);
+          if (!c || c === 'Unknown') return;
+          if (!sysMap[c]) sysMap[c] = [];
+          sysMap[c].push(p);
+        });
       });
-      var sharedSys = projects.filter(function(o){
-        return o.ref_id !== p.ref_id && o.system && o.system !== 'Unknown' && o.system === p.system;
+      Object.keys(sysMap).sort().forEach(function(sys){
+        var projs = sysMap[sys];
+        if (projs.length < 2) return;
+        html += '<div class="impact-card">'
+          + '<div class="ic-title">' + sys + '</div>'
+          + '<div class="ic-meta"><span>' + projs.length + ' projects touching this system</span></div>'
+          + '<div class="ic-group-label sys">Projects</div>'
+          + projs.map(function(p){ return '<div class="ic-item sys"><strong>' + p.title + '</strong> &nbsp;|&nbsp; BSA: ' + p.bsa_owner + ' &nbsp;|&nbsp; ' + p.status + '</div>'; }).join('')
+          + '</div>';
       });
-      var linkedEnh = [];
-      if (p.source === 'manual') {
-        var eids = Object.keys(allLinks).filter(function(eid){ return allLinks[eid] === p.ref_id; });
-        linkedEnh = eids.map(function(eid){
-          return allData.projects.find(function(x){ return x.ref_id === eid; });
-        }).filter(Boolean);
-      }
-      var parentProject = null;
-      if (p.source === 'smartsheet' && allLinks[p.ref_id]) {
-        parentProject = projects.find(function(x){ return x.ref_id === allLinks[p.ref_id]; });
-      }
-      if (sharedBSA.length === 0 && sharedSys.length === 0 && linkedEnh.length === 0 && !parentProject) return;
-      html += '<div class="impact-card">'
-        + '<div class="ic-title">' + p.title + '</div>'
-        + '<div class="ic-meta"><span>BSA: ' + p.bsa_owner + '</span><span>System: ' + p.system + '</span><span>' + riskBadge(p.risk_level) + '</span></div>';
-      if (parentProject) {
-        html += '<div class="ic-group-label enh">Part of Large Project</div>'
-          + '<div class="ic-item sys">' + parentProject.title + ' (' + parentProject.bsa_owner + ')</div>';
-      }
-      if (linkedEnh.length > 0) {
-        html += '<div class="ic-group-label enh">Linked Enhancements (' + linkedEnh.length + ')</div>'
-          + linkedEnh.slice(0, 8).map(function(e){ return '<div class="ic-item sys">' + e.title + ' (' + e.bsa_owner + ')</div>'; }).join('');
-      }
-      if (sharedBSA.length > 0) {
-        html += '<div class="ic-group-label bsa">Shared BSA Owner</div>'
-          + sharedBSA.slice(0, 6).map(function(o){ return '<div class="ic-item bsa">' + o.title + ' - ' + o.bsa_owner + '</div>'; }).join('');
-      }
-      if (sharedSys.length > 0) {
-        html += '<div class="ic-group-label sys">Same System: ' + p.system + '</div>'
-          + sharedSys.slice(0, 6).map(function(o){ return '<div class="ic-item sys">' + o.title + ' - ' + o.bsa_owner + '</div>'; }).join('');
-      }
-      html += '</div>';
-    });
-    document.getElementById('cards-impact').innerHTML = html
-      || '<div class="empty"><h3>No impact relationships detected yet</h3><p>Add large projects and link enhancements to them to see how they relate.</p></div>';
+
+    } else if (currentImpactCat === 'requestor') {
+      var reqMap = {};
+      manual.forEach(function(p){
+        var req = p.requestor || '';
+        if (!req || req === 'Unknown' || req === '--') return;
+        if (!reqMap[req]) reqMap[req] = [];
+        reqMap[req].push(p);
+      });
+      Object.keys(reqMap).sort().forEach(function(req){
+        var projs = reqMap[req];
+        var bsas = new Set();
+        projs.forEach(function(p){ p.bsa_owner.split(',').forEach(function(b){ if (b.trim()) bsas.add(b.trim()); }); });
+        if (bsas.size < 2) return;
+        html += '<div class="impact-card">'
+          + '<div class="ic-title">' + req + '</div>'
+          + '<div class="ic-meta"><span>' + projs.length + ' projects &nbsp;|&nbsp; ' + bsas.size + ' BSAs involved</span></div>'
+          + '<div class="ic-group-label bsa">Projects</div>'
+          + projs.map(function(p){ return '<div class="ic-item bsa"><strong>' + p.title + '</strong> &nbsp;|&nbsp; BSA: ' + p.bsa_owner + '</div>'; }).join('')
+          + '</div>';
+      });
+
+    } else if (currentImpactCat === 'overloaded') {
+      var bsaMap = {};
+      manual.forEach(function(p){
+        p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
+          if (!b || NON_BSA.includes(b)) return;
+          if (!bsaMap[b]) bsaMap[b] = [];
+          bsaMap[b].push(p);
+        });
+      });
+      Object.keys(bsaMap).sort(function(a,b){ return bsaMap[b].length - bsaMap[a].length; }).forEach(function(bsa){
+        var projs = bsaMap[bsa];
+        if (projs.length < 2) return;
+        html += '<div class="impact-card">'
+          + '<div class="ic-title">' + bsa + '</div>'
+          + '<div class="ic-meta"><span>' + projs.length + ' active projects</span></div>'
+          + '<div class="ic-group-label bsa">Projects</div>'
+          + projs.map(function(p){ return '<div class="ic-item bsa"><strong>' + p.title + '</strong> &nbsp;|&nbsp; ' + p.system + ' &nbsp;|&nbsp; ' + p.status + '</div>'; }).join('')
+          + '</div>';
+      });
+
+    } else if (currentImpactCat === 'coowned') {
+      var coowned = manual.filter(function(p){ return p.co_owner && p.co_owner !== ''; });
+      coowned.forEach(function(p){
+        html += '<div class="impact-card">'
+          + '<div class="ic-title">' + p.title + '</div>'
+          + '<div class="ic-meta"><span>System: ' + p.system + '</span><span>Status: ' + p.status + '</span></div>'
+          + '<div class="ic-group-label bsa">Owners</div>'
+          + '<div class="ic-item bsa">Primary BSA: <strong>' + p.bsa_owner + '</strong></div>'
+          + '<div class="ic-item bsa">Co-Owner: <strong>' + p.co_owner + '</strong></div>'
+          + '</div>';
+      });
+    }
+
+    document.getElementById('cards-impact').innerHTML = html || emptyMsg;
   }
+
+  var NON_BSA = ['Sarah Rinderer','John Shepard','Brenda Murphy','Brianna Herbert','Chris Busick','Michael Cox','Nate Hoenig'];
+
+  function cleanSys(s) { return s.replace(/ ?Enhancements?$/i, '').trim(); }
 
   function renderHeatmap() {
     if (!allData) return;
-    var maxN = Math.max.apply(null, allData.bsa_workload.map(function(b){ return b.active_count || 1; }));
-    var barsHtml = '';
-    allData.bsa_workload.slice().sort(function(a,b){ return b.active_count - a.active_count; }).forEach(function(b){
-      var pct = Math.round((b.active_count / maxN) * 100);
-      barsHtml += '<div class="wl-row">'
-        + '<div class="wl-name">' + b.name + '</div>'
-        + '<div class="wl-bar-bg"><div class="wl-fill ' + (b.overloaded ? 'over' : '') + '" style="width:' + pct + '%"><span class="wl-n">' + b.active_count + '</span></div></div>'
-        + (b.overloaded ? '<span class="over-tag">Overloaded</span>' : '')
-        + '</div>';
-    });
-    document.getElementById('wl-bars').innerHTML = barsHtml;
+    var manual = allData.projects.filter(function(p){ return p.source === 'manual'; });
+    var emptyMsg = '<tbody><tr><td colspan="20" style="padding:20px;color:#94a3b8;text-align:center;font-size:13px;">No projects submitted yet. Add projects using the Add Project tab.</td></tr></tbody>';
 
-    var bsas = allData.bsa_workload.map(function(b){ return b.name; });
-    var systems = allData.system_overlap.filter(function(s){ return s.system !== 'Unknown'; }).map(function(s){ return s.system; });
-    var grid = {};
-    allData.projects.forEach(function(p){
-      if (!p.system || p.system === 'Unknown') return;
+    // BSA workload bars (manual projects only)
+    var bsaCount = {};
+    manual.forEach(function(p){
       p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
-        var k = p.system + '|' + b;
-        grid[k] = (grid[k] || 0) + 1;
+        if (b && !NON_BSA.includes(b)) bsaCount[b] = (bsaCount[b] || 0) + 1;
       });
     });
-    var tbl = '<thead><tr><th>System</th>'
-      + bsas.map(function(b){ var parts = b.split(' '); return '<th>' + parts[0] + '<br>' + parts.slice(1).join(' ') + '</th>'; }).join('')
-      + '</tr></thead><tbody>'
-      + systems.map(function(sys){
-          return '<tr><td class="rname">' + sys + '</td>'
-            + bsas.map(function(b){
-                var c = grid[sys + '|' + b] || 0;
-                var cls = c >= 3 ? 'c3' : c === 2 ? 'c2' : c === 1 ? 'c1' : 'c0';
-                return '<td class="' + cls + '">' + (c || '--') + '</td>';
-              }).join('')
-            + '</tr>';
+    var bsaList = Object.keys(bsaCount).sort(function(a,b){ return bsaCount[b] - bsaCount[a]; });
+    var maxN = Math.max.apply(null, Object.values(bsaCount).concat([1]));
+    document.getElementById('wl-bars').innerHTML = bsaList.length
+      ? bsaList.map(function(b){
+          var n = bsaCount[b]; var pct = Math.round((n / maxN) * 100);
+          return '<div class="wl-row">'
+            + '<div class="wl-name">' + b + '</div>'
+            + '<div class="wl-bar-bg"><div class="wl-fill" style="width:' + pct + '%"><span class="wl-n">' + n + '</span></div></div>'
+            + '</div>';
         }).join('')
-      + '</tbody>';
-    document.getElementById('hm-table').innerHTML = tbl;
+      : '<div style="color:#94a3b8;font-size:13px;padding:10px 0;">No projects submitted yet.</div>';
+
+    // Collect systems and BSA columns
+    var sysSet = {};
+    manual.forEach(function(p){
+      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
+      sysList.forEach(function(s){ var c = cleanSys(s); if (c && c !== 'Unknown') sysSet[c] = true; });
+    });
+    var systems = Object.keys(sysSet).sort();
+    var bsaCols = bsaList.slice().sort();
+
+    // Grid 1: System x BSA
+    var g1 = {};
+    manual.forEach(function(p){
+      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
+      sysList.forEach(function(s){
+        var c = cleanSys(s); if (!c || c === 'Unknown') return;
+        p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){
+          if (b && !NON_BSA.includes(b)) { var k = c+'|'+b; g1[k] = (g1[k]||0)+1; }
+        });
+      });
+    });
+    document.getElementById('hm-table').innerHTML = (bsaCols.length && systems.length)
+      ? '<thead><tr><th>System</th>' + bsaCols.map(function(b){ var pts=b.split(' '); return '<th>'+pts[0]+'<br>'+pts.slice(1).join(' ')+'</th>'; }).join('') + '</tr></thead><tbody>'
+        + systems.map(function(sys){ return '<tr><td class="rname">'+sys+'</td>'+bsaCols.map(function(b){ var c=g1[sys+'|'+b]||0; var cl=c>=3?'c3':c===2?'c2':c===1?'c1':'c0'; return '<td class="'+cl+'">'+(c||'--')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'
+      : emptyMsg;
+
+    // Grid 2: System x Project
+    var titles = manual.map(function(p){ return p.title; });
+    var g2 = {};
+    manual.forEach(function(p){
+      var sysList = Array.isArray(p.systems) && p.systems.length ? p.systems : p.system.split(',').map(function(s){ return s.trim(); });
+      sysList.forEach(function(s){
+        var c = cleanSys(s); if (!c || c === 'Unknown') return;
+        var k = c+'|'+p.title; g2[k] = (g2[k]||0)+1;
+      });
+    });
+    document.getElementById('hm-table-2').innerHTML = (titles.length && systems.length)
+      ? '<thead><tr><th>System</th>' + titles.map(function(t){ var w=t.split(' '); var m=Math.ceil(w.length/2); return '<th>'+w.slice(0,m).join(' ')+'<br>'+w.slice(m).join(' ')+'</th>'; }).join('') + '</tr></thead><tbody>'
+        + systems.map(function(sys){ return '<tr><td class="rname">'+sys+'</td>'+titles.map(function(t){ var c=g2[sys+'|'+t]||0; var cl=c>=3?'c3':c===2?'c2':c===1?'c1':'c0'; return '<td class="'+cl+'">'+(c||'--')+'</td>'; }).join('')+'</tr>'; }).join('')+'</tbody>'
+      : emptyMsg;
   }
 
   // ── POPULATE FILTERS / AI SELECT ──────────────────────────────────────────

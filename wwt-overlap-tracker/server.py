@@ -3,6 +3,9 @@ import json
 import threading
 import time
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+CENTRAL = ZoneInfo("America/Chicago")
 from flask import Flask, jsonify, request, send_from_directory
 from groq import Groq
 
@@ -93,7 +96,7 @@ def build_full_dataset():
         if "source" not in p:
             p["source"] = "smartsheet"
 
-    output["last_refreshed"] = datetime.now().strftime("%B %d, %Y at %I:%M %p CST")
+    output["last_refreshed"] = datetime.now(CENTRAL).strftime("%B %d, %Y at %I:%M %p %Z")
     return output
 
 
