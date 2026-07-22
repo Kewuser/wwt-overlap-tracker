@@ -46,7 +46,7 @@
     .nav-item {
       display: flex; align-items: center; gap: 10px;
       padding: 10px 16px; cursor: pointer;
-      font-size: 13px; font-weight: 500; color: #475569;
+      font-size: 14px; font-weight: 500; color: #475569;
       border-left: 3px solid transparent; transition: all 0.12s;
     }
     .nav-item:hover { background: #f8fafc; color: #003087; }
@@ -317,6 +317,9 @@
     .panel-similar-name { font-weight: 600; color: #1e293b; }
     .panel-similar-meta { color: #64748b; margin-top: 2px; }
 
+    .bsa-chip { display:flex; align-items:center; gap:6px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:20px; padding:4px 12px; font-size:13px; font-weight:600; color:#1d4ed8; }
+    .bsa-chip-remove { background:none; border:none; cursor:pointer; color:#94a3b8; font-size:15px; line-height:1; padding:0; }
+    .bsa-chip-remove:hover { color:#dc2626; }
     .impact-filter-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
     .impact-cat-btn { padding: 8px 18px; border-radius: 20px; border: 1px solid #e2e8f0; background: white; color: #475569; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.12s; }
     .impact-cat-btn:hover { border-color: #003087; color: #003087; }
@@ -345,30 +348,33 @@
   <div class="nav-section">
     <div class="nav-label">Projects</div>
     <div class="nav-item active" id="nav-large" onclick="switchTab('large', this)">
-      <span class="nav-icon">&#128218;</span> Large Projects
+      Large Projects
       <span class="nav-badge blue" id="nb-large">0</span>
     </div>
     <div class="nav-item" id="nav-enhancements" onclick="switchTab('enhancements', this)">
-      <span class="nav-icon">&#9889;</span> Enhancements
+      Enhancements
       <span class="nav-badge blue" id="nb-enh">0</span>
     </div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Analysis</div>
     <div class="nav-item" id="nav-impact" onclick="switchTab('impact', this)">
-      <span class="nav-icon">&#128279;</span> Project Overlaps
+      Project Overlaps
     </div>
     <div class="nav-item" id="nav-heatmap" onclick="switchTab('heatmap', this)">
-      <span class="nav-icon">&#128202;</span> Heatmap
+      Heatmap
     </div>
   </div>
   <div class="nav-section">
     <div class="nav-label">Actions</div>
     <div class="nav-item" id="nav-add" onclick="switchTab('add', this)">
-      <span class="nav-icon">&#43;</span> Add Project
+      Add Project
     </div>
     <div class="nav-item" id="nav-ai" onclick="switchTab('ai', this)">
-      <span class="nav-icon">&#129302;</span> AI Assistant
+      AI Assistant
+    </div>
+    <div class="nav-item" id="nav-settings" onclick="switchTab('settings', this)">
+      Settings
     </div>
   </div>
 </div>
@@ -513,11 +519,6 @@
             <label>BSA Owner *</label>
             <select id="fp-bsa">
               <option value="">Select BSA...</option>
-              <option>Angela Rhodes</option><option>Dan Temperly</option>
-              <option>Dustin Hartrick</option><option>Ellen Clegg</option>
-              <option>Jennifer Bednar</option><option>Jennifer Cummings</option>
-              <option>Jordan Butler</option><option>Tori Yardley</option>
-              <option>Zack Godat</option>
             </select>
           </div>
           <div class="fg">
@@ -681,6 +682,44 @@
 
     </div>
   </div>
+  <!-- SETTINGS -->
+  <div id="tab-settings" class="tab-content">
+    <div class="page-hd">
+      <div>
+        <div class="page-title">Settings</div>
+        <div class="page-sub">For managers only. Use this panel to manage BSA team members and dashboard settings. Changes take effect immediately.</div>
+      </div>
+    </div>
+    <div class="form-outer">
+
+      <div class="form-card" style="margin-bottom:20px;">
+        <h2>BSA Team Members</h2>
+        <p class="form-sub">Add or remove team members. This updates all dropdowns and filters across the dashboard.</p>
+        <div id="bsa-list-container" style="margin-bottom:18px;display:flex;flex-wrap:wrap;gap:8px;min-height:32px;"></div>
+        <div class="fg">
+          <label>Add New BSA Member</label>
+          <div style="display:flex;gap:10px;">
+            <input type="text" id="new-bsa-name" placeholder="Full name (e.g. Jane Smith)" style="flex:1;"/>
+            <button class="btn-primary" onclick="addBSA()" style="white-space:nowrap;">Add</button>
+          </div>
+        </div>
+        <div id="bsa-ok" class="success-msg">Team updated successfully.</div>
+      </div>
+
+      <div class="form-card">
+        <h2>Intake Form URL</h2>
+        <p class="form-sub">The link shown on each enhancement card. Paste the full Smartsheet intake form URL here.</p>
+        <div class="fg">
+          <label>Smartsheet Intake Form URL</label>
+          <input type="text" id="intake-url-input" placeholder="https://app.smartsheet.com/b/form/..."/>
+        </div>
+        <button class="btn-primary" onclick="saveIntakeUrl()">Save URL</button>
+        <div id="url-ok" class="success-msg">URL saved successfully.</div>
+      </div>
+
+    </div>
+  </div>
+
 </div><!-- /main -->
 
 <!-- SIDE PANEL OVERLAY -->
@@ -697,19 +736,26 @@
 
 <script>
   var allData = null;
-  var allLinks = {}; // { enhancement_ref_id: large_project_ref_id }
+  var allLinks = {};
+  var intakeFormUrl = '';
+  var bsaTeam = [];
 
   // ── DATA LOAD ──────────────────────────────────────────────────────────────
 
   async function loadData() {
     document.getElementById('refresh-time').textContent = 'Loading...';
     try {
-      var [projRes, linkRes] = await Promise.all([
+      var [projRes, linkRes, settingsRes, bsaRes] = await Promise.all([
         fetch('/api/projects'),
-        fetch('/api/links')
+        fetch('/api/links'),
+        fetch('/api/settings'),
+        fetch('/api/bsa-team')
       ]);
       allData = await projRes.json();
       allLinks = await linkRes.json();
+      var settings = await settingsRes.json();
+      bsaTeam = await bsaRes.json();
+      intakeFormUrl = settings.intake_form_url || '';
     } catch(e) {
       document.getElementById('refresh-time').textContent = 'Error - is server.py running?';
       return;
@@ -717,12 +763,16 @@
     document.getElementById('refresh-time').textContent = allData.last_refreshed || 'just now';
     updateStats('manual');
     populateFilters();
+    populateBSADropdown();
     populateAI();
     renderLarge();
     renderEnh();
     renderImpact();
     renderHeatmap();
     updateNavBadges();
+    renderBSAList();
+    var urlInput = document.getElementById('intake-url-input');
+    if (urlInput) urlInput.value = intakeFormUrl;
   }
 
   async function doRefresh() {
@@ -764,14 +814,14 @@
       document.getElementById('s-med').textContent = projects.filter(function(p){ return p.priority === 'Medium'; }).length;
       document.getElementById('s-low').textContent = projects.filter(function(p){ return p.priority === 'Low'; }).length;
     } else {
-      document.getElementById('lbl-total').textContent = 'Total Active';
-      document.getElementById('lbl-high').textContent = 'High Touch';
-      document.getElementById('lbl-med').textContent = 'Medium';
-      document.getElementById('lbl-low').textContent = 'Low Touch';
+      document.getElementById('lbl-total').textContent = 'Total Projects';
+      document.getElementById('lbl-high').textContent = 'In Progress';
+      document.getElementById('lbl-med').textContent = 'Discovery';
+      document.getElementById('lbl-low').textContent = 'On Hold';
       document.getElementById('s-total').textContent = projects.length;
-      document.getElementById('s-high').textContent = projects.filter(function(p){ return p.risk_level === 'High Touch'; }).length;
-      document.getElementById('s-med').textContent = projects.filter(function(p){ return p.risk_level === 'Medium'; }).length;
-      document.getElementById('s-low').textContent = projects.filter(function(p){ return p.risk_level === 'Low Touch'; }).length;
+      document.getElementById('s-high').textContent = projects.filter(function(p){ return p.status === 'In Progress'; }).length;
+      document.getElementById('s-med').textContent = projects.filter(function(p){ return p.status === 'Discovery'; }).length;
+      document.getElementById('s-low').textContent = projects.filter(function(p){ return p.status === 'On Hold'; }).length;
     }
     document.getElementById('s-coown').textContent = coOwned;
     document.getElementById('s-bsas').textContent = bsas.size;
@@ -893,13 +943,16 @@
   function renderLarge() {
     if (!allData) return;
     var status = document.getElementById('f-large-status') ? document.getElementById('f-large-status').value : '';
-    var p = allData.projects.filter(function(x){ return x.source === 'manual'; });
-    p = applyFilters(p, 'f-large-search', 'f-large-bsa', 'f-large-risk', null);
+    var all = allData.projects.filter(function(x){ return x.source === 'manual'; });
+    var p = applyFilters(all.slice(), 'f-large-search', 'f-large-bsa', 'f-large-risk', null);
     if (status) p = p.filter(function(x){ return x.status === status; });
     document.getElementById('c-large').textContent = p.length + ' projects';
+    var emptyMsg = all.length === 0
+      ? '<div class="empty"><h3>No projects yet</h3><p>Use the Add Project tab to submit your first project.</p></div>'
+      : '<div class="empty"><h3>No projects match your filters</h3></div>';
     document.getElementById('cards-large').innerHTML = p.length
       ? p.map(function(x){ return buildCard(x); }).join('')
-      : '<div class="empty"><h3>No large projects yet</h3><p>Use Add Project to enter strategic projects not in Smartsheet<br>(Beeline VMS, First Light, SOW Governance, etc.)</p></div>';
+      : emptyMsg;
   }
 
   function buildEnhCard(p) {
@@ -928,7 +981,7 @@
       + '</div></div>'
       + notesHtml
       + '<div class="card-footer">'
-      + '<a class="btn-intake" href="https://app.smartsheet.com/sheets/QXrr72P2g3MmMRppHP57W5FhCph3gGCwqH5m9FX1?view=grid" target="_blank">Strategic Initiatives & Operations Intake Form</a>'
+      + '<a class="btn-intake" href="' + (intakeFormUrl || '#') + '" target="_blank">Strategic Initiatives & Operations Intake Form</a>'
       + '</div>'
       + '</div>';
   }
@@ -1135,6 +1188,82 @@
     if (sysEl) sysEl.innerHTML = '<option value="">All Systems</option>' + systems.map(function(s){ return '<option>' + s + '</option>'; }).join('');
     var stEl = document.getElementById('f-large-status');
     if (stEl) stEl.innerHTML = '<option value="">All Statuses</option>' + statuses.map(function(s){ return '<option>' + s + '</option>'; }).join('');
+  }
+
+  function populateBSADropdown() {
+    var sel = document.getElementById('fp-bsa');
+    if (!sel) return;
+    var cur = sel.value;
+    sel.innerHTML = '<option value="">Select BSA...</option>'
+      + bsaTeam.map(function(b){ return '<option>' + b + '</option>'; }).join('');
+    if (cur) sel.value = cur;
+  }
+
+  function renderBSAList() {
+    var container = document.getElementById('bsa-list-container');
+    if (!container) return;
+    container.innerHTML = bsaTeam.map(function(b){
+      return '<div class="bsa-chip">' + b
+        + '<button class="bsa-chip-remove" onclick="removeBSA(\'' + b.replace(/'/g, "\\'") + '\')" title="Remove">x</button>'
+        + '</div>';
+    }).join('');
+  }
+
+  async function addBSA() {
+    var input = document.getElementById('new-bsa-name');
+    var name = input.value.trim();
+    if (!name) { alert('Please enter a name.'); return; }
+    try {
+      var res = await fetch('/api/bsa-team', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ name: name })
+      });
+      var data = await res.json();
+      if (data.success) {
+        bsaTeam = data.team;
+        input.value = '';
+        renderBSAList();
+        populateBSADropdown();
+        var ok = document.getElementById('bsa-ok');
+        ok.style.display = 'block';
+        setTimeout(function(){ ok.style.display = 'none'; }, 3000);
+      }
+    } catch(e) { alert('Could not connect to server.'); }
+  }
+
+  async function removeBSA(name) {
+    if (!confirm('Remove ' + name + ' from the BSA team?')) return;
+    try {
+      var res = await fetch('/api/bsa-team/' + encodeURIComponent(name), { method: 'DELETE' });
+      var data = await res.json();
+      if (data.success) {
+        bsaTeam = data.team;
+        renderBSAList();
+        populateBSADropdown();
+        var ok = document.getElementById('bsa-ok');
+        ok.style.display = 'block';
+        setTimeout(function(){ ok.style.display = 'none'; }, 3000);
+      }
+    } catch(e) { alert('Could not connect to server.'); }
+  }
+
+  async function saveIntakeUrl() {
+    var url = document.getElementById('intake-url-input').value.trim();
+    try {
+      var res = await fetch('/api/settings', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ intake_form_url: url })
+      });
+      var data = await res.json();
+      if (data.success) {
+        intakeFormUrl = url;
+        var ok = document.getElementById('url-ok');
+        ok.style.display = 'block';
+        setTimeout(function(){ ok.style.display = 'none'; }, 3000);
+      }
+    } catch(e) { alert('Could not connect to server.'); }
   }
 
   function populateAI() {
