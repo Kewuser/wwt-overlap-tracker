@@ -177,6 +177,8 @@
     .btn-del:hover { background: #fef2f2; border-color: #fca5a5; }
     .btn-ai { padding: 5px 13px; border-radius: 6px; border: 1px solid #7c3aed; background: white; color: #7c3aed; cursor: pointer; font-size: 12px; font-weight: 700; }
     .btn-ai:hover { background: #7c3aed; color: white; }
+    .btn-intake { padding: 5px 13px; border-radius: 6px; border: 1px solid #0066cc; background: white; color: #0066cc; cursor: pointer; font-size: 12px; font-weight: 700; text-decoration: none; display: inline-block; }
+    .btn-intake:hover { background: #0066cc; color: white; }
     .source-pill { margin-left: auto; }
 
     /* IMPACT */
@@ -343,10 +345,6 @@
   </div>
   <div class="nav-section">
     <div class="nav-label">Analysis</div>
-    <div class="nav-item" id="nav-review" onclick="switchTab('review', this)">
-      <span class="nav-icon">&#128680;</span> Needs Review
-      <span class="nav-badge red" id="nb-review" style="display:none">0</span>
-    </div>
     <div class="nav-item" id="nav-impact" onclick="switchTab('impact', this)">
       <span class="nav-icon">&#128279;</span> Project Impact
     </div>
@@ -422,7 +420,7 @@
     <div class="page-hd">
       <div>
         <div class="page-title">Smartsheet Enhancements</div>
-        <div class="page-sub">Live from the intake form. Use "Link to Project" on a card to connect it to a large project above.</div>
+        <div class="page-sub">Showing enhancements with status: Active, New, In Progress, and Under Review. Backlog, Canceled, and Completed items are not included.</div>
       </div>
       <div class="count-pill" id="c-enh">0 enhancements</div>
     </div>
@@ -430,33 +428,18 @@
       <input type="text" id="f-enh-search" placeholder="Search..." oninput="renderEnh()"/>
       <select id="f-enh-bsa" onchange="renderEnh()"><option value="">All BSAs</option></select>
       <select id="f-enh-sys" onchange="renderEnh()"><option value="">All Systems</option></select>
-      <select id="f-enh-risk" onchange="renderEnh()">
-        <option value="">All Risk Levels</option>
-        <option>High Touch</option><option>Medium</option><option>Low Touch</option>
+      <select id="f-enh-priority" onchange="renderEnh()">
+        <option value="">All Priorities</option>
+        <option>High</option><option>Medium</option><option>Low</option><option>Unknown</option>
+      </select>
+      <select id="f-enh-status" onchange="renderEnh()">
+        <option value="">All Statuses</option>
+        <option>New</option><option>In Progress</option><option>Under Review</option><option>Active</option>
       </select>
     </div>
     <div class="cards-grid" id="cards-enh"><div class="loading">Loading...</div></div>
   </div>
 
-  <!-- NEEDS REVIEW -->
-  <div id="tab-review" class="tab-content">
-    <div class="page-hd">
-      <div>
-        <div class="page-title">Needs Review</div>
-        <div class="page-sub">High Touch and Medium projects flagged for coordination attention.</div>
-      </div>
-      <div class="count-pill" id="c-review">0 projects</div>
-    </div>
-    <div class="filter-bar">
-      <select id="f-rev-bsa" onchange="renderReview()"><option value="">All BSAs</option></select>
-      <select id="f-rev-risk" onchange="renderReview()">
-        <option value="">High Touch + Medium</option>
-        <option value="High Touch">High Touch only</option>
-        <option value="Medium">Medium only</option>
-      </select>
-    </div>
-    <div class="cards-grid" id="cards-review"></div>
-  </div>
 
   <!-- PROJECT IMPACT -->
   <div id="tab-impact" class="tab-content">
@@ -536,7 +519,7 @@
               <input type="radio" name="fp-coown" value="No" checked onchange="document.getElementById('fp-coown-name').style.display='none'"> No
             </label>
             <label style="font-weight:500;font-size:13px;display:flex;align-items:center;gap:6px;margin-bottom:0;">
-              <input type="radio" name="fp-coown" value="Yes" onchange="document.getElementById('fp-coown-name').style.display='block'"> Yes, list their name below
+              <input type="radio" name="fp-coown" value="Yes" onchange="document.getElementById('fp-coown-name').style.display='block'"> Yes — list their name below
             </label>
           </div>
           <input type="text" id="fp-coown-name" placeholder="Co-owner's name(s)..." style="display:none;margin-top:8px;width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;color:#1e293b;background:#f8fafc;"/>
@@ -719,7 +702,6 @@
     populateAI();
     renderLarge();
     renderEnh();
-    renderReview();
     renderImpact();
     renderHeatmap();
     updateNavBadges();
@@ -758,12 +740,8 @@
   function updateNavBadges() {
     var large = allData.projects.filter(function(p){ return p.source === 'manual'; }).length;
     var enh = allData.projects.filter(function(p){ return p.source === 'smartsheet'; }).length;
-    var rev = allData.projects.filter(function(p){ return p.risk_level === 'High Touch' || p.risk_level === 'Medium'; }).length;
     document.getElementById('nb-large').textContent = large;
     document.getElementById('nb-enh').textContent = enh;
-    var revBadge = document.getElementById('nb-review');
-    if (rev > 0) { revBadge.textContent = rev; revBadge.style.display = ''; }
-    else { revBadge.style.display = 'none'; }
   }
 
   // ── TAB SWITCHING ──────────────────────────────────────────────────────────
@@ -874,28 +852,46 @@
       : '<div class="empty"><h3>No large projects yet</h3><p>Use Add Project to enter strategic projects not in Smartsheet<br>(Beeline VMS, First Light, SOW Governance, etc.)</p></div>';
   }
 
+  function buildEnhCard(p) {
+    var dateStr = p.request_date && p.request_date !== 'nan' && p.request_date !== '' ? p.request_date : '';
+    return '<div class="card">'
+      + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
+      + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div></div>'
+      + '<div class="card-fields">'
+      + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + p.bsa_owner + '</span></div>'
+      + '<div class="frow"><span class="flabel">System</span><span class="fval strong">' + (p.system || 'Unknown') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Requestor</span><span class="fval">' + (p.requestor || '--') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Priority</span><span class="fval">' + (p.priority || '--') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Program</span><span class="fval">' + (p.program || '--') + '</span></div>'
+      + '<div class="frow"><span class="flabel">Type</span><span class="fval">' + (p.request_type || '--') + '</span></div>'
+      + (dateStr ? '<div class="frow"><span class="flabel">Date</span><span class="fval">' + dateStr + '</span></div>' : '')
+      + '</div>'
+      + '<div class="card-footer">'
+      + '<a class="btn-intake" href="https://app.smartsheet.com/b/form/YOUR_FORM_ID" target="_blank">Strategic Initiatives & Operations Intake Form</a>'
+      + '<span class="source-pill"><span class="badge b-smart">Smartsheet</span></span>'
+      + '</div>'
+      + '</div>';
+  }
+
   function renderEnh() {
     if (!allData) return;
     var p = allData.projects.filter(function(x){ return x.source === 'smartsheet'; });
-    p = applyFilters(p, 'f-enh-search', 'f-enh-bsa', 'f-enh-risk', 'f-enh-sys');
+    var q = document.getElementById('f-enh-search') ? document.getElementById('f-enh-search').value.toLowerCase() : '';
+    var bsa = document.getElementById('f-enh-bsa') ? document.getElementById('f-enh-bsa').value : '';
+    var sys = document.getElementById('f-enh-sys') ? document.getElementById('f-enh-sys').value : '';
+    var priority = document.getElementById('f-enh-priority') ? document.getElementById('f-enh-priority').value : '';
+    var status = document.getElementById('f-enh-status') ? document.getElementById('f-enh-status').value : '';
+    if (q) p = p.filter(function(x){ return (x.title + x.bsa_owner + x.system + x.requestor).toLowerCase().includes(q); });
+    if (bsa) p = p.filter(function(x){ return x.bsa_owner.includes(bsa); });
+    if (sys) p = p.filter(function(x){ return x.system === sys; });
+    if (priority) p = p.filter(function(x){ return x.priority === priority; });
+    if (status) p = p.filter(function(x){ return x.status === status; });
     document.getElementById('c-enh').textContent = p.length + ' enhancements';
     document.getElementById('cards-enh').innerHTML = p.length
-      ? p.map(function(x){ return buildCard(x); }).join('')
+      ? p.map(function(x){ return buildEnhCard(x); }).join('')
       : '<div class="empty"><h3>No enhancements match</h3></div>';
   }
 
-  function renderReview() {
-    if (!allData) return;
-    var bsa = document.getElementById('f-rev-bsa') ? document.getElementById('f-rev-bsa').value : '';
-    var riskFilter = document.getElementById('f-rev-risk') ? document.getElementById('f-rev-risk').value : '';
-    var p = allData.projects.filter(function(x){ return x.risk_level === 'High Touch' || x.risk_level === 'Medium'; });
-    if (bsa) p = p.filter(function(x){ return x.bsa_owner.includes(bsa); });
-    if (riskFilter) p = p.filter(function(x){ return x.risk_level === riskFilter; });
-    document.getElementById('c-review').textContent = p.length + ' projects';
-    document.getElementById('cards-review').innerHTML = p.length
-      ? p.map(function(x){ return buildCard(x); }).join('')
-      : '<div class="empty"><h3>Nothing needs review right now</h3></div>';
-  }
 
   function renderImpact() {
     if (!allData) return;
@@ -997,7 +993,7 @@
     });
     bsas.sort(); systems.sort(); statuses.sort();
     var bsaOpts = '<option value="">All BSAs</option>' + bsas.map(function(b){ return '<option>' + b + '</option>'; }).join('');
-    ['f-large-bsa','f-enh-bsa','f-rev-bsa'].forEach(function(id){
+    ['f-large-bsa','f-enh-bsa'].forEach(function(id){
       var el = document.getElementById(id);
       if (el) { var cur = el.value; el.innerHTML = bsaOpts; if (cur) el.value = cur; }
     });
