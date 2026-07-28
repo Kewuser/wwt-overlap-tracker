@@ -117,6 +117,13 @@
     .card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.09); }
 
     .card-header { padding: 16px 18px 12px; border-bottom: 1px solid #f1f5f9; }
+    .card-header-lp { background: #2563eb; border-bottom: 1px solid #1d4ed8 !important; }
+    .card-header-lp .card-title { color: white !important; }
+    .card-header-lp .badge.b-status { background: rgba(255,255,255,0.2) !important; color: white !important; border-color: rgba(255,255,255,0.3) !important; }
+    .card-header-enh { background: #dc2626; border-bottom: 1px solid #b91c1c !important; }
+    .card-header-enh .card-title { color: white !important; }
+    .card-header-enh .badge.b-status { background: rgba(255,255,255,0.2) !important; color: white !important; border-color: rgba(255,255,255,0.3) !important; }
+    .card-header-enh .enh-ref { color: rgba(255,255,255,0.65) !important; }
     .card-title-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 10px; }
     .card-title { font-size: 14px; font-weight: 700; color: #1e293b; line-height: 1.4; flex: 1; }
     .badge-row { display: flex; gap: 5px; flex-wrap: wrap; flex-shrink: 0; }
@@ -581,7 +588,7 @@
           </div>
           <div class="fg">
             <label>Expected Completion Date</label>
-            <input type="text" id="fp-end-date" placeholder="MM/YYYY or Ongoing"/>
+            <input type="text" id="fp-end-date" placeholder="MM/YYYY or On-going"/>
           </div>
         </div>
 
@@ -847,14 +854,17 @@
     }
     footer += '<a class="btn-intake" href="' + (visioTrackerUrl || '#') + '" target="_blank" onclick="event.stopPropagation()">Flow Tracker</a>';
     footer += '</div>';
+    var hdrClass = isManual ? 'card-header card-header-lp' : 'card-header';
     return '<div class="card" onclick="showDetail(\'' + p.ref_id + '\')" style="cursor:pointer;">'
-      + '<div class="card-header"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
+      + '<div class="' + hdrClass + '"><div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
       + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div></div>'
       + '<div class="card-fields">'
       + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + p.bsa_owner + '</span></div>'
       + '<div class="frow"><span class="flabel">System</span><span class="fval strong">' + (p.system || 'Unknown') + '</span></div>'
       + '<div class="frow"><span class="flabel">Stakeholder</span><span class="fval strong">' + (p.requestor || '--') + '</span></div>'
       + '<div class="frow"><span class="flabel">Priority</span><span class="fval">' + (p.priority || 'Unknown') + '</span></div>'
+      + (p.start_date ? '<div class="frow"><span class="flabel">Start Date</span><span class="fval">' + p.start_date + '</span></div>' : '')
+      + (p.end_date ? '<div class="frow"><span class="flabel">End Date</span><span class="fval">' + p.end_date + '</span></div>' : '')
       + (p.notes ? '<div class="frow"><span class="flabel">Notes</span><span class="fval">' + p.notes + '</span></div>' : '')
       + '</div>'
       + (flags ? '<div class="card-flags">' + flags + '</div>' : '')
@@ -902,10 +912,10 @@
       ? '<div class="frow"><span class="flabel">Initiative Name</span><span class="fval">' + p.initiative_name + '</span></div>'
       : '';
     return '<div class="card">'
-      + '<div class="card-header">'
+      + '<div class="card-header card-header-enh">'
       + '<div class="card-title-row"><div class="card-title">' + (p.title || 'Untitled') + '</div>'
       + '<div class="badge-row"><span class="badge b-status">' + p.status + '</span></div></div>'
-      + '<div style="font-size:11px;color:#94a3b8;margin-top:3px;">Ref ID: ' + clean(p.ref_id) + '</div>'
+      + '<div class="enh-ref" style="font-size:11px;color:#94a3b8;margin-top:3px;">Ref ID: ' + clean(p.ref_id) + '</div>'
       + '</div>'
       + '<div class="card-fields"><div class="enh-grid">'
       + '<div class="frow"><span class="flabel">BSA Owner</span><span class="fval strong">' + clean(p.bsa_owner) + '</span></div>'
@@ -1110,7 +1120,8 @@
     var bsas = [], systems = [], statuses = [];
     allData.projects.forEach(function(p){
       p.bsa_owner.split(',').map(function(b){ return b.trim(); }).forEach(function(b){ if (b && !bsas.includes(b)) bsas.push(b); });
-      if (p.system && p.system !== 'Unknown' && !systems.includes(p.system)) systems.push(p.system);
+      // Systems filter for enhancements: only pull from Smartsheet projects
+      if (p.source === 'smartsheet' && p.system && p.system !== 'Unknown' && !systems.includes(p.system)) systems.push(p.system);
       if (p.status && !statuses.includes(p.status)) statuses.push(p.status);
     });
     bsas.sort(); systems.sort(); statuses.sort();

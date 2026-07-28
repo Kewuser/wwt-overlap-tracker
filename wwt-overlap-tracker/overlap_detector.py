@@ -1,4 +1,3 @@
-import pandas as pd
 import json
 from collections import defaultdict
 from datetime import datetime
@@ -30,7 +29,15 @@ HIGH_RISK_SYSTEMS = {
 }
 
 
+def _clean(val, default=""):
+    if val is None or str(val).strip().lower() in ("nan", "none"):
+        return default
+    return str(val).strip()
+
+
 def load_data(path=EXCEL_PATH):
+    # Local use only (reads Excel file). Not called on Render.
+    import pandas as pd
     df = pd.read_excel(path, sheet_name=SHEET_NAME, header=0)
     df = df.rename(columns={
         "Ref ID": "ref_id",
@@ -48,39 +55,45 @@ def load_data(path=EXCEL_PATH):
     cols = ["ref_id", "initiative_name", "request_title", "bsa_owner",
             "requestor", "system", "status", "request_type",
             "request_date", "priority", "program"]
-    df = df[cols].copy()
-    df["ref_id"] = df["ref_id"].fillna("").astype(str).str.strip()
-    df["bsa_owner"] = df["bsa_owner"].fillna("Unassigned").astype(str).str.strip()
-    df["requestor"] = df["requestor"].fillna("Unknown").astype(str).str.strip()
-    df["system"] = df["system"].fillna("Unknown").astype(str).str.strip()
-    df["status"] = df["status"].fillna("Unknown").astype(str).str.strip()
-    df["initiative_name"] = df["initiative_name"].fillna("").astype(str).str.strip()
-    df["request_title"] = df["request_title"].fillna("").astype(str).str.strip()
-    df["priority"] = df["priority"].fillna("Unknown").astype(str).str.strip()
-    df["program"] = df["program"].fillna("Unknown").astype(str).str.strip()
-    return df
+    df = df[[c for c in cols if c in df.columns]].copy()
+    rows = []
+    for _, row in df.iterrows():
+        rows.append({
+            "ref_id": _clean(row.get("ref_id"), ""),
+            "initiative_name": _clean(row.get("initiative_name"), ""),
+            "request_title": _clean(row.get("request_title"), ""),
+            "bsa_owner": _clean(row.get("bsa_owner"), "Unassigned"),
+            "requestor": _clean(row.get("requestor"), "Unknown"),
+            "system": _clean(row.get("system"), "Unknown"),
+            "status": _clean(row.get("status"), "Unknown"),
+            "request_type": _clean(row.get("request_type"), "Unknown"),
+            "request_date": _clean(row.get("request_date"), ""),
+            "priority": _clean(row.get("priority"), "Unknown"),
+            "program": _clean(row.get("program"), "Unknown"),
+            "notes": "",
+        })
+    return rows
 
 
-def get_active(df):
-    active = df[df["status"].isin(ACTIVE_STATUSES)].copy()
+def get_active(rows):
     def has_bsa_owner(owner_str):
         owners = [o.strip() for o in str(owner_str).split(",")]
         return any(o in BSA_TEAM for o in owners)
-    return active[active["bsa_owner"].apply(has_bsa_owner)].copy()
+    return [r for r in rows if r["status"] in ACTIVE_STATUSES and has_bsa_owner(r["bsa_owner"])]
 
 
 def parse_owners(owner_str):
     return [o.strip() for o in owner_str.split(",") if o.strip()]
 
 
-def detect_overlaps(active_df):
+def detect_overlaps(active):
     bsa_workload = defaultdict(list)
     system_overlap = defaultdict(list)
     requestor_bsa_map = defaultdict(lambda: defaultdict(list))
     co_owner_projects = []
     project_flags = {}
 
-    for _, row in active_df.iterrows():
+    for row in active:
         ref = row["ref_id"]
         owners = parse_owners(row["bsa_owner"])
         system = row["system"]
@@ -110,7 +123,7 @@ def detect_overlaps(active_df):
                 bsa: refs for bsa, refs in bsa_dict.items()
             }
 
-    for _, row in active_df.iterrows():
+    for row in active:
         ref = row["ref_id"]
         owners = parse_owners(row["bsa_owner"])
         system = row["system"]
@@ -131,7 +144,7 @@ def detect_overlaps(active_df):
             score += 1
 
         if len(owners) > 1:
-            flags.append(f"Co-owned by {len(owners)} BSAs — coordination needed")
+            flags.append(f"Co-owned by {len(owners)} BSAs - coordination needed")
             score += 1
 
         project_flags[ref] = {
@@ -143,9 +156,9 @@ def detect_overlaps(active_df):
     return bsa_workload, system_overlap, requestor_multi_bsa, co_owner_projects, project_flags
 
 
-def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, co_owner_projects, project_flags):
+def build_output(active, bsa_workload, system_overlap, requestor_multi_bsa, co_owner_projects, project_flags):
     projects = []
-    for _, row in active_df.iterrows():
+    for row in active:
         ref = row["ref_id"]
         flag_data = project_flags.get(ref, {"overlap_score": 0, "flags": [], "risk_level": "Low Touch"})
         bsa_owners_filtered = [o.strip() for o in row["bsa_owner"].split(",") if o.strip() in BSA_TEAM]
@@ -160,9 +173,9 @@ def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, c
             "status": row["status"],
             "priority": row["priority"],
             "program": row["program"],
-            "request_type": row["request_type"],
-            "request_date": row.get("request_date", "") if pd.notna(row.get("request_date", "")) else "",
-            "notes": row.get("notes", "") if pd.notna(row.get("notes", "")) else "",
+            "request_type": row.get("request_type", ""),
+            "request_date": row.get("request_date", ""),
+            "notes": row.get("notes", ""),
             "overlap_score": flag_data["overlap_score"],
             "risk_level": flag_data["risk_level"],
             "flags": flag_data["flags"],
@@ -201,7 +214,7 @@ def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, c
     return {
         "generated_at": datetime.now().isoformat(),
         "summary": {
-            "total_active": len(active_df),
+            "total_active": len(active),
             "high_touch_count": sum(1 for p in projects if p["risk_level"] == "High Touch"),
             "medium_count": sum(1 for p in projects if p["risk_level"] == "Medium"),
             "low_touch_count": sum(1 for p in projects if p["risk_level"] == "Low Touch"),
@@ -220,9 +233,9 @@ def build_output(active_df, bsa_workload, system_overlap, requestor_multi_bsa, c
 
 def run():
     print("Loading intake data...")
-    df = load_data(EXCEL_PATH)
-    active = get_active(df)
-    print(f"  Found {len(df)} total rows, {len(active)} active projects")
+    rows = load_data(EXCEL_PATH)
+    active = get_active(rows)
+    print(f"  Found {len(rows)} total rows, {len(active)} active projects")
 
     print("Detecting overlaps...")
     bsa_workload, system_overlap, requestor_multi_bsa, co_owner_projects, project_flags = detect_overlaps(active)

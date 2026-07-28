@@ -96,19 +96,22 @@ def build_full_dataset():
 
     manual = load_manual_projects()
     if manual:
+        # Compute BSA workload from manual projects only — do not cross-reference Smartsheet data
+        from collections import defaultdict as _dd
+        manual_bsa_load = _dd(list)
         for mp in manual:
-            bsa = mp.get("bsa_owner", "")
+            for b in [x.strip() for x in mp.get("bsa_owner", "").split(",") if x.strip()]:
+                manual_bsa_load[b].append(mp["ref_id"])
+
+        for mp in manual:
             flags = []
             score = 0
-
-            if bsa in bsa_workload and len(bsa_workload[bsa]) >= 10:
-                flags.append(f"BSA overloaded: {bsa} has {len(bsa_workload[bsa])} active items")
-                score += 1
-
-            system = mp.get("system", "")
-            if system in system_overlap and len(system_overlap[system]) >= 5:
-                flags.append(f"Hot system: {len(system_overlap[system])} active projects touch {system}")
-                score += 1
+            # Only flag BSA overload based on how many large projects they own (manual list only)
+            for b in [x.strip() for x in mp.get("bsa_owner", "").split(",") if x.strip()]:
+                count = len(manual_bsa_load[b])
+                if count >= 3:
+                    flags.append(f"BSA has {count} active large projects: {b}")
+                    score += 1
 
             mp["overlap_score"] = score
             mp["flags"] = flags
