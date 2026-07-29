@@ -419,14 +419,18 @@
     <div class="page-hd">
       <div>
         <div class="page-title">Large Projects</div>
-        <div class="page-sub">Manually entered projects not tracked in Smartsheet</div>
+        <div class="page-sub">Manually entered projects</div>
       </div>
       <div class="count-pill" id="c-large">0 projects</div>
     </div>
     <div class="filter-bar">
       <input type="text" id="f-large-search" placeholder="Search projects..." oninput="renderLarge()"/>
       <select id="f-large-bsa" onchange="renderLarge()"><option value="">All BSAs</option></select>
-      <select id="f-large-status" onchange="renderLarge()"><option value="">All Statuses</option></select>
+      <select id="f-large-status-quick" onchange="renderLarge()">
+        <option value="">All Statuses</option>
+        <option>In Progress</option><option>Discovery</option><option>New</option>
+        <option>Under Review</option><option>On Hold</option><option>Complete</option>
+      </select>
       <select id="f-large-risk" onchange="renderLarge()">
         <option value="">All Priorities</option>
         <option>High</option><option>Medium</option><option>Low</option><option>Unknown</option>
@@ -526,7 +530,7 @@
             <label>Status</label>
             <select id="fp-status">
               <option>In Progress</option><option>Discovery</option>
-              <option>New</option><option>Under Review</option><option>On Hold</option>
+              <option>New</option><option>Under Review</option><option>On Hold</option><option>Complete</option>
             </select>
           </div>
         </div>
@@ -890,10 +894,10 @@
 
   function renderLarge() {
     if (!allData) return;
-    var status = document.getElementById('f-large-status') ? document.getElementById('f-large-status').value : '';
+    var statusQuick = document.getElementById('f-large-status-quick') ? document.getElementById('f-large-status-quick').value : '';
     var all = allData.projects.filter(function(x){ return x.source === 'manual'; });
     var p = applyFilters(all.slice(), 'f-large-search', 'f-large-bsa', 'f-large-risk', null);
-    if (status) p = p.filter(function(x){ return x.status === status; });
+    if (statusQuick) p = p.filter(function(x){ return x.status === statusQuick; });
     document.getElementById('c-large').textContent = p.length + ' projects';
     var emptyMsg = all.length === 0
       ? '<div class="empty"><h3>No projects yet</h3><p>Use the Add Project tab to submit your first project.</p></div>'
@@ -1139,8 +1143,6 @@
     initiatives.sort();
     var initEl = document.getElementById('f-enh-initiative');
     if (initEl) initEl.innerHTML = '<option value="">All Initiatives</option>' + initiatives.map(function(i){ return '<option>' + i + '</option>'; }).join('');
-    var stEl = document.getElementById('f-large-status');
-    if (stEl) stEl.innerHTML = '<option value="">All Statuses</option>' + statuses.map(function(s){ return '<option>' + s + '</option>'; }).join('');
   }
 
   function populateBSADropdown() {
