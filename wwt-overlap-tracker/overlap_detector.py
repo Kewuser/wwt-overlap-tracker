@@ -18,6 +18,7 @@ BSA_TEAM = {
     "Angela Rhodes",
     "Tori Yardley",
     "Dan Temperly",
+    "Mandy Huang"
 }
 
 HIGH_RISK_SYSTEMS = {

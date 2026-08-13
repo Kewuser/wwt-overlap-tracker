@@ -609,7 +609,6 @@
     </div>
   </div>
 
-  <!-- AI ASSISTANT -->
   <!-- SETTINGS -->
   <div id="tab-settings" class="tab-content">
     <div class="page-hd">
@@ -680,7 +679,7 @@
   var visioTrackerUrl = 'https://wwt-my.sharepoint.com/:x:/r/personal/huangma_wwt_com/_layouts/15/Doc.aspx?sourcedoc=%7B8df86dd2-a071-4347-ad41-0bfa982c46a1%7D&action=edit&activeCell=%27Visio%20Flows%20Tracker%27!B34&wdinitialsession=d4150620-538c-ec45-cff1-c632ca9b11cb&wdrldsc=4&wdrldc=1&wdrldr=AccessTokenExpiredWarningUnauthenticated%2CRefreshin';
   var bsaTeam = [];
 
-  // ── DATA LOAD ──────────────────────────────────────────────────────────────
+// Load data from the server
 
   async function loadData() {
     document.getElementById('refresh-time').textContent = 'Loading...';
@@ -776,7 +775,7 @@
     document.getElementById('nb-enh').textContent = enh;
   }
 
-  // ── TAB SWITCHING ──────────────────────────────────────────────────────────
+// Handle switching between tabs
 
   function switchTab(name, el) {
     document.querySelectorAll('.tab-content').forEach(function(t){ t.classList.remove('active'); });
@@ -795,7 +794,7 @@
     }
   }
 
-  // ── BADGE HELPERS ──────────────────────────────────────────────────────────
+// Helpers for status/source badges
 
   function riskBadge(risk) {
     var cls = risk === 'High Touch' ? 'b-high' : risk === 'Medium' ? 'b-medium' : 'b-low';
@@ -808,7 +807,7 @@
       : '<span class="badge b-smart">Smartsheet</span>';
   }
 
-  // ── CARD BUILDER ──────────────────────────────────────────────────────────
+// Build project card HTML
 
   function buildCard(p, opts) {
     opts = opts || {};
@@ -883,7 +882,7 @@
     return projects;
   }
 
-  // ── RENDER TABS ────────────────────────────────────────────────────────────
+// Render each tab's content
 
   function renderLarge() {
     if (!allData) return;
@@ -1111,7 +1110,7 @@
       : emptyMsg;
   }
 
-  // ── POPULATE FILTERS / AI SELECT ──────────────────────────────────────────
+// Populate filter dropdowns
 
   function populateFilters() {
     var bsas = [], systems = [], statuses = [];
@@ -1233,7 +1232,7 @@
   }
 
 
-  // ── CRUD ──────────────────────────────────────────────────────────────────
+// Add, edit, delete projects
 
   async function submitProject() {
     var refId = document.getElementById('edit-id').value;
@@ -1370,7 +1369,7 @@
     } catch(e) { alert('Cannot connect to server.'); }
   }
 
-  // ── LINK FEATURE ──────────────────────────────────────────────────────────
+// Link enhancements to large projects
 
   async function linkProject(enhRefId) {
     var sel = document.getElementById('lk-' + enhRefId);
@@ -1394,85 +1393,7 @@
     } catch(e) { alert('Cannot connect to server.'); }
   }
 
-  // ── AI ASSISTANT ──────────────────────────────────────────────────────────
-
-  function aiFor(refId) {
-    switchTab('ai', document.getElementById('nav-ai'));
-    document.getElementById('ai-proj').value = refId;
-    window.scrollTo(0,0);
-  }
-
-  async function runAI() {
-    var refId = document.getElementById('ai-proj').value;
-    var notes = document.getElementById('ai-notes').value.trim();
-    if (!refId) { alert('Please select a project.'); return; }
-    if (!notes) { alert('Please enter your notes.'); return; }
-    var project = allData.projects.find(function(p){ return p.ref_id === refId; });
-    document.getElementById('ai-spin').style.display = 'block';
-    document.getElementById('ai-result').style.display = 'none';
-    try {
-      var res = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ project: project, question: notes })
-      });
-      var data = await res.json();
-      document.getElementById('ai-text').textContent = data.suggestion || data.error || 'No response';
-      document.getElementById('ai-disc').textContent = data.disclaimer || '';
-      document.getElementById('ai-result').style.display = 'block';
-    } catch(e) {
-      document.getElementById('ai-text').textContent = 'Could not connect to AI. Make sure server.py is running and you are on a non-WWT network for Groq.';
-      document.getElementById('ai-result').style.display = 'block';
-    }
-    document.getElementById('ai-spin').style.display = 'none';
-  }
-
-  async function runDraftUpdate() {
-    var refId = document.getElementById('draft-proj').value;
-    if (!refId) { alert('Please select a project.'); return; }
-    var project = allData.projects.find(function(p){ return p.ref_id === refId; });
-    var context = document.getElementById('draft-context').value.trim();
-    document.getElementById('draft-spin').style.display = 'block';
-    document.getElementById('draft-result').style.display = 'none';
-    try {
-      var res = await fetch('/api/draft-update', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ project: project, context: context })
-      });
-      var data = await res.json();
-      document.getElementById('draft-text').textContent = data.draft || data.error || 'No response';
-      document.getElementById('draft-disc').textContent = data.disclaimer || '';
-      document.getElementById('draft-result').style.display = 'block';
-    } catch(e) {
-      document.getElementById('draft-text').textContent = 'Could not connect to AI.';
-      document.getElementById('draft-result').style.display = 'block';
-    }
-    document.getElementById('draft-spin').style.display = 'none';
-  }
-
-  async function runTeamOverview() {
-    if (!allData) { alert('Data not loaded yet.'); return; }
-    document.getElementById('overview-spin').style.display = 'block';
-    document.getElementById('overview-result').style.display = 'none';
-    try {
-      var res = await fetch('/api/team-overview', {
-        method: 'POST',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({ projects: allData.projects })
-      });
-      var data = await res.json();
-      document.getElementById('overview-text').textContent = data.summary || data.error || 'No response';
-      document.getElementById('overview-disc').textContent = data.disclaimer || '';
-      document.getElementById('overview-result').style.display = 'block';
-    } catch(e) {
-      document.getElementById('overview-text').textContent = 'Could not connect to AI.';
-      document.getElementById('overview-result').style.display = 'block';
-    }
-    document.getElementById('overview-spin').style.display = 'none';
-  }
-
-  // ── SIDE PANEL ─────────────────────────────────────────────────────────────
+// Side panel for project details
 
   function showDetail(refId) {
     var p = allData.projects.find(function(x){ return x.ref_id === refId; });
